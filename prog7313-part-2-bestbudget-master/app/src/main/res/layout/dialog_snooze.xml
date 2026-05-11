@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/card_white">
+
+    <!--
+        TOP ROW: Title on left, Red X close button on right.
+        Per UI mockup — red X appears in the top right corner
+        of the dialog to close/cancel without any action.
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="WARNING!"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#C62828"
+            android:textAlignment="center"/>
+
+        <!--
+            RED X CLOSE BUTTON — top right corner per UI mockup.
+            Tapping this dismisses the dialog without saving
+            or using a snooze. Returns user to the form.
+        -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCloseSnooze"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:text="✕"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:padding="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:backgroundTint="#C62828"
+            app:cornerRadius="18dp"/>
+
+    </LinearLayout>
+
+    <!--
+        MAIN MESSAGE
+        Set dynamically by SnoozeDialogFragment.
+        Scenario A: "Adding this expense will put {Category} over
+        budget. You have {x} snooze(s) left this month..."
+        Scenario B: "Adding this expense will put {Category} over
+        budget. You have no more snooze(s) left..."
+    -->
+    <TextView
+        android:id="@+id/tvSnoozeMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Message set by SnoozeDialogFragment"
+        android:textSize="14sp"
+        android:textColor="@color/accent_dark_blue"
+        android:textAlignment="center"
+        android:lineSpacingMultiplier="1.5"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- SNOOZE COUNT — e.g. "Snoozes Left: 2" -->
+    <TextView
+        android:id="@+id/tvSnoozeCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Snoozes Left: 0"
+        android:textSize="13sp"
+        android:textStyle="italic"
+        android:textColor="@color/text_link_blue"
+        android:textAlignment="center"
+        android:layout_marginBottom="24dp"/>
+
+    <!--
+        LOG WITHOUT SNOOZE — both scenarios.
+        Saves expense with persistent overspend indicator on category.
+    -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnUseSnooze"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="USE SNOOZE"
+        android:textSize="14sp"
+        android:paddingVertical="12dp"
+        android:layout_marginBottom="8dp"
+        app:backgroundTint="#3F51B5"
+        app:cornerRadius="30dp"/>
+
+    <!--
+        USE SNOOZE — Scenario A only.
+        Hidden in Scenario B: btnUseSnooze.visibility = View.GONE
+        Saves expense and silences the overspend indicator.
+    -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogWithoutSnooze"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="LOG WITHOUT SNOOZE"
+        android:textSize="14sp"
+        android:paddingVertical="12dp"
+        android:visibility="visible"
+        app:backgroundTint="@color/accent_dark_blue"
+        app:cornerRadius="30dp"/>
+
+</LinearLayout>
