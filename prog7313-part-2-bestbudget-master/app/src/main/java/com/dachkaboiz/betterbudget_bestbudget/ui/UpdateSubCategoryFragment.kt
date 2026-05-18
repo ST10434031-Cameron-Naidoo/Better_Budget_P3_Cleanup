@@ -74,7 +74,38 @@ class UpdateSubCategoryFragment (
             }
 
             lifecycleScope.launch {
-                // Update SubCategory
+
+                // 0. Load parent + existing sub goals BEFORE updating anything
+                val catGoal = db.categoryGoalDao().getGoalsByCategory(parentID)
+                val subCatGoals = db.subCategoryGoalDao().getGoalsByCategory(parentID)
+
+                // Remove current goal from totals (because we are updating it)
+                val filteredSubGoals = subCatGoals.filter { it.subCategoryID != subID }
+
+                val totalMinSubGoal = filteredSubGoals.sumOf { it.minGoal ?: 0.0 }
+                val totalMaxSubGoal = filteredSubGoals.sumOf { it.maxGoal ?: 0.0 }
+
+                val catMinGoal = catGoal?.minGoal ?: 0.0
+                val catMaxGoal = catGoal?.maxGoal ?: 0.0
+
+                val safeMinGoal = minGoal ?: 0.0
+                val safeMaxGoal = maxGoal ?: 0.0
+
+                // Validate BEFORE updating anything
+                val goalsValid =
+                    (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
+                            (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
+
+                if (!goalsValid) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Min or max goal total exceeds category goal",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@launch
+                }
+
+                // 1. Update SubCategory
                 currentSubCategory?.let { sub ->
                     val updatedSub = sub.copy(
                         subCategoryName = name,
@@ -84,14 +115,16 @@ class UpdateSubCategoryFragment (
                     db.subCategoryDao().updateSubCategory(updatedSub)
                 }
 
-                // Handle Goal (Update existing or Insert new if they just added one)
+                // 2. Update or Insert SubCategoryGoal
                 val cal = Calendar.getInstance()
+
                 if (currentGoal != null) {
                     val updatedGoal = currentGoal!!.copy(
                         minGoal = minGoal,
                         maxGoal = maxGoal
                     )
                     db.subCategoryGoalDao().updateSubCategoryGoal(updatedGoal)
+
                 } else if (minGoal != null || maxGoal != null) {
                     val newGoal = SubCategoryGoal(
                         subCategoryID = subID,
@@ -108,8 +141,7 @@ class UpdateSubCategoryFragment (
                 parentFragmentManager.popBackStack()
             }
         }
-
-        btnCancel.setOnClickListener {
+            btnCancel.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
     }
