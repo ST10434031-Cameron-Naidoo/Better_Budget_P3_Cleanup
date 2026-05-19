@@ -26,8 +26,7 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
         super.onViewCreated(view, savedInstanceState)
 
 
-
-        val db =AppDatabase.getDatabase(requireContext())
+        val db = AppDatabase.getDatabase(requireContext())
         // UI References
         val tvCatName: TextView = view.findViewById(R.id.tvParentCategory)
         val etName = view.findViewById<EditText>(R.id.etSubcategoryName)
@@ -39,8 +38,7 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
         val btnCancel = view.findViewById<Button>(R.id.btnSubCancel)
 
 
-
-            // Add Parent Category Name
+        // Add Parent Category Name
         lifecycleScope.launch {
             val parentCat = db.categoryDao().getCategoryById(parentID)
             parentCat?.let { cat ->
@@ -68,7 +66,35 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
 
             lifecycleScope.launch {
                 try {
-                    // 1. Create and Insert SubCategory
+
+                    // 0. Validate goals BEFORE inserting anything
+                    val catGoal: CategoryGoal? = db.categoryGoalDao().getGoalsByCategory(parentID)
+                    val subCatGoals: List<SubCategoryGoal> =
+                        db.subCategoryGoalDao().getGoalsByCategory(parentID)
+
+                    val totalMinSubGoal: Double = subCatGoals.sumOf { it.minGoal ?: 0.0 }
+                    val totalMaxSubGoal: Double = subCatGoals.sumOf { it.maxGoal ?: 0.0 }
+
+                    val catMinGoal: Double = catGoal?.minGoal ?: 0.0
+                    val catMaxGoal: Double = catGoal?.maxGoal ?: 0.0
+
+                    val safeMinGoal = minGoal ?: 0.0
+                    val safeMaxGoal = maxGoal ?: 0.0
+
+                    val goalsValid =
+                        (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
+                                (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
+
+                    if (!goalsValid) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Min or max goal total is greater than category min or max goal",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+
+                    // 1. Insert SubCategory ONLY after validation passes
                     val newSubCategory = SubCategory(
                         parentCategoryID = parentID,
                         subCategoryName = name,
@@ -76,65 +102,41 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                         subCategoryDescription = description
                     )
 
+                    val subCategoryId =
+                        db.subCategoryDao().insertSubCategory(newSubCategory).toInt()
 
-                    //Check sub goals total less than parent goals
-                    val subCategoryId = db.subCategoryDao().insertSubCategory(newSubCategory).toInt()
-                    val catGoal: CategoryGoal? = db.categoryGoalDao().getGoalsByCategory(parentID)
-                    val subCatGoals: List<SubCategoryGoal> = db.subCategoryGoalDao().getGoalsByCategory(parentID)
-                    val totalMinSubGoal: Double = subCatGoals.sumOf { it.minGoal ?: 0.0 }
-                    val totalMaxSubGoal: Double = subCatGoals.sumOf { it.maxGoal ?: 0.0}
-                    val catMinGoal: Double = catGoal?.minGoal ?: 0.0
-                    val catMaxGoal: Double = catGoal?.maxGoal ?: 0.0
-                    val safeMinGoal = minGoal ?: 0.0
-                    val safeMaxGoal = maxGoal ?: 0.0
-                    var goalBool: Boolean = false
-                    if (catMinGoal > (totalMinSubGoal + safeMinGoal) && catMaxGoal > (totalMaxSubGoal + safeMaxGoal)) {
-                        goalBool= true
-                    }
-                    else {
-                        Toast.makeText(
-                            requireContext(),
-                            "min or max goal total is greater than category min or max goal",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return@launch
-
+                    // 2. Insert SubCategoryGoal if provided
+                    if (minGoal != null || maxGoal != null) {
+                        val calendar = Calendar.getInstance()
+                        val goal = SubCategoryGoal(
+                            subCategoryID = subCategoryId,
+                            categoryID = parentID,
+                            minGoal = minGoal,
+                            maxGoal = maxGoal,
+                            month = calendar.get(Calendar.MONTH) + 1,
+                            year = calendar.get(Calendar.YEAR)
+                        )
+                        db.subCategoryGoalDao().insertSubCategoryGoal(goal)
                     }
 
-                    // 2. If goals were entered, insert a Goal record
-                    if ((minGoal != null || maxGoal != null) && goalBool) {
-
-
-                            val calendar = Calendar.getInstance()
-                            val goal = SubCategoryGoal(
-                                subCategoryID = subCategoryId,
-                                categoryID = parentID,
-                                minGoal = minGoal,
-                                maxGoal = maxGoal,
-                                month = calendar.get(Calendar.MONTH) + 1,
-                                year = calendar.get(Calendar.YEAR)
-                            )
-                            db.subCategoryGoalDao().insertSubCategoryGoal(goal)
-
-
-                        }
-
-                    Toast.makeText(requireContext(), "Subcategory added successfully", Toast.LENGTH_SHORT).show()
-
-                    // Go back to CategoryBreakdownFragment
+                    Toast.makeText(
+                        requireContext(),
+                        "Subcategory added successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     parentFragmentManager.popBackStack()
 
                 } catch (e: Exception) {
-                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG)
+                        .show()
                 }
+            }
+
+            btnCancel.setOnClickListener {
+                parentFragmentManager.popBackStack()
             }
         }
 
-        btnCancel.setOnClickListener {
-            parentFragmentManager.popBackStack()
-        }
+
     }
-
-
-
 }
