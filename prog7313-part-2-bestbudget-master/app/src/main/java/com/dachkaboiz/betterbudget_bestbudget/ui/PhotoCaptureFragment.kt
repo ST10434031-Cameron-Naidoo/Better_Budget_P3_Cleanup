@@ -13,7 +13,6 @@ import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
-import com.dachkaboiz.betterbudget_bestbudget.data.model.Photo
 import com.dachkaboiz.betterbudget_bestbudget.databinding.FragmentPhotoCaptureBinding
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
 import kotlinx.coroutines.launch
