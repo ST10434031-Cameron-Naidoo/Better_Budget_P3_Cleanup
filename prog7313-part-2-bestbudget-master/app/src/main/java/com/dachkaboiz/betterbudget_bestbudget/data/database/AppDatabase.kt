@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.dachkaboiz.betterbudget_bestbudget.data.dao.PhotoDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.CategoryDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.CategoryGoalDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.ExpenseDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.SubCategoryDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.SubCategoryGoalDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.UserDao
+import com.dachkaboiz.betterbudget_bestbudget.data.model.Photo
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
@@ -24,7 +26,8 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.User
         SubCategory::class,
         Expense::class,
         CategoryGoal::class,
-        SubCategoryGoal::class
+        SubCategoryGoal::class,
+        Photo:: class
 
 
     ],
@@ -39,7 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun categoryGoalDao(): CategoryGoalDao
     abstract fun subCategoryGoalDao(): SubCategoryGoalDao
-
+    abstract fun photoDao(): PhotoDao
 
     companion object {
         @Volatile
