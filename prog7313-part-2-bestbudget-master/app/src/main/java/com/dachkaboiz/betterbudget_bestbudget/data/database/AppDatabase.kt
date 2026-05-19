@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.dachkaboiz.betterbudget_bestbudget.data.dao.PhotoDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.CategoryDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.CategoryGoalDao
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.ExpenseDao
@@ -42,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun categoryGoalDao(): CategoryGoalDao
     abstract fun subCategoryGoalDao(): SubCategoryGoalDao
-    abstract fun photoDao(): PhotoDao
+    
 
     companion object {
         @Volatile
