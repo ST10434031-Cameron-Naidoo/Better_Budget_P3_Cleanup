@@ -40,6 +40,11 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
         tvDateTo = view.findViewById(R.id.tvDateTo)
         rgSort = view.findViewById(R.id.rgSortHome)
 
+        // Code Attribution
+        // This method was taken from stack overflow
+        // https://stackoverflow.com/questions/40584424/how-to-set-layoutmanager-to-recyclerview-in-kotlin
+        // user7324564
+        // https://stackoverflow.com/users/7324564/user7324564
 
 
         // Initialize Adapter with Triple data and navigation logic
@@ -85,6 +90,11 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
         loadGoals()
 
         //  Add Goal Navigation
+        // Code Attribution
+        // This method was taken from stack overflow
+        // https://stackoverflow.com/questions/52312758/how-to-replace-fragment-in-kotlin
+        // Marcos Paulo
+        // https://stackoverflow.com/users/9151525/marcos-paulo
         btnAdd.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.mainFragment, AddGoalFragment())
@@ -97,6 +107,12 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
     private fun loadGoals() {
         val db = AppDatabase.getDatabase(requireContext())
+
+        // Code Attribution
+        // This method was taken from stack overflow
+        // https://stackoverflow.com/questions/58268102/how-to-use-room-database-with-coroutines-in-android
+        // CodinginFlow
+        // https://stackoverflow.com/users/8302339/codinginflow
         lifecycleScope.launch {
             // 1. Fetching all goals using the Dao method we added
             val allGoals = db.categoryGoalDao().getAllGoals()
@@ -160,6 +176,11 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
         }
     }
 
+    // Code Attribution
+    // This method was taken from stack overflow
+    // https://stackoverflow.com/questions/14933330/datepicker-how-to-popup-datepicker-when-click-on-edittext
+    // user2024571
+    // https://stackoverflow.com/users/2024571/user2024571
     private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
         val calendar = Calendar.getInstance()
         DatePickerDialog(requireContext(), { _, year, month, day ->

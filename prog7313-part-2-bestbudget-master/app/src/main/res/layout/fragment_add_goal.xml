@@ -44,6 +44,11 @@
             android:background="@drawable/spinner_background"
             android:padding="12dp"/>
 
+        // Code Attribution
+        // This method was taken from stack overflow
+        // https://www.digitalocean.com/community/tutorials/android-spinner-using-kotlin
+        // Anupam Chugh
+
         <!-- MIN GOAL -->
         <EditText
             android:id="@+id/etGoalMinAmount"

@@ -35,6 +35,12 @@ class AddGoalFragment : Fragment(R.layout.fragment_add_goal){
 
             val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, names)
             spinner.adapter = adapter
+
+            // Code Attribution
+            // This method was taken from stack overflow
+            // https://www.digitalocean.com/community/tutorials/android-spinner-using-kotlin
+            // Anupam Chugh
+
         }
 
         // 2. Save logic
