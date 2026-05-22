@@ -57,15 +57,7 @@ class ExpenseAdapter(
             holder.tvCategoryName.text = resolved
         }
 
-        // Subcategory icon and name
-        // Subcategory
-        if (expense.subCategoryID != null) {
-            holder.tvSubCategoryName.visibility = View.VISIBLE
-            holder.tvSubCategoryName.text = subCategoryNameResolver?.invoke(expense.subCategoryID)
-                ?: "Subcategory ${expense.subCategoryID}"
-        } else {
-            holder.tvSubCategoryName.visibility = View.GONE
-        }
+
 
         // Subcategory
         if (expense.subCategoryID != null) {
@@ -90,14 +82,6 @@ class ExpenseAdapter(
             holder.tvDescription.visibility = View.VISIBLE
             holder.tvDescription.text = expense.expenseDescription
         }
-
-        // Photo
-//        if (!expense.imageUri.isNullOrEmpty()) {
-//            holder.ivExpensePhoto.visibility = View.VISIBLE
-//            holder.ivExpensePhoto.setImageURI(Uri.parse(expense.imageUri))
-//        } else {
-//            holder.ivExpensePhoto.visibility = View.GONE
-//        }
 
         if (!expense.imageUri.isNullOrEmpty()) {
             holder.ivExpensePhoto.visibility = View.VISIBLE
