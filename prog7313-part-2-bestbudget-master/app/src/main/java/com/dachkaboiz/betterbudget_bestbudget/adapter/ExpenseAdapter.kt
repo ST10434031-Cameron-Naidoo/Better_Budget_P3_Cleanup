@@ -15,6 +15,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
+
+
 class ExpenseAdapter(
     private val onItemClick: (Expense) -> Unit,
     private val onItemLongClick: (Expense) -> Unit,

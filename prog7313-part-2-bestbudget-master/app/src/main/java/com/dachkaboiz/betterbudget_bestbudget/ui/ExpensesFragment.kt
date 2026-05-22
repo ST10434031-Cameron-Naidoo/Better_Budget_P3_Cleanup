@@ -159,6 +159,11 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
                 if (to   != null) expenses = expenses.filter { it.expenseDate <= to }
             }
 
+
+            // This method was taken from Kotlin Documentation
+            // https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/sorted-by.html
+            // JetBrains
+
             val sorted = when (rgSortOrder.checkedRadioButtonId) {
                 R.id.rbSortFirstAdded -> expenses.sortedBy { it.expenseID }
                 R.id.rbSortLastAdded  -> expenses.sortedByDescending { it.expenseID }
@@ -199,6 +204,13 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
             .addToBackStack(null)
             .commit()
     }
+
+
+    // Code Attribution
+    // This method was taken from Stack Overflow
+    // https://stackoverflow.com/questions/14933330
+    // Daniel Jonker
+    // https://stackoverflow.com/users/1058592/daniel-jonker
 
     private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
         val calendar = Calendar.getInstance()
