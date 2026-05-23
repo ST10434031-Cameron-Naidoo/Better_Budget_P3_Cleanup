@@ -401,6 +401,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
                 // TODO Part 3: Re-enable snooze pre-commit budget check when snooze is wired up
                 // Snooze pre-commit check
 
+
                 lifecycleScope.launch {
                     val startOfMonth = Calendar.getInstance().apply {
                         set(year, month - 1, 1, 0, 0, 0)

@@ -21,10 +21,8 @@ import java.util.Calendar
 
 class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fragment_add_subcategory) {
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
 
         val db = AppDatabase.getDatabase(requireContext())
         // UI References
@@ -37,25 +35,24 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
         val btnAdd = view.findViewById<Button>(R.id.btnSubAdd)
         val btnCancel = view.findViewById<Button>(R.id.btnSubCancel)
 
-
-        // Add Parent Category Name
+        // Code Attribution
+        // The use of lifecycleScope.launch for running coroutines in a Fragment
+        // was referenced from Stack Overflow
+        // https://stackoverflow.com/questions/54827455/how-to-implement-coroutines-with-room-database
+        // Ravi Kumar
+        // https://stackoverflow.com/users/9581883/ravi-kumar
         lifecycleScope.launch {
             val parentCat = db.categoryDao().getCategoryById(parentID)
             parentCat?.let { cat ->
                 tvCatName.setText(cat.categoryName)
-
             }
-
         }
-
-
 
         btnAdd.setOnClickListener {
             val name = etName.text.toString().trim()
-            val icon = etIcon.text.toString().trim().ifBlank { "default_subcategory_icon" }
+            val icon = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
 
-            // Goals
             val minGoal = etMinGoal.text.toString().toDoubleOrNull()
             val maxGoal = etMaxGoal.text.toString().toDoubleOrNull()
 
@@ -64,13 +61,25 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                 return@setOnClickListener
             }
 
+            if (icon.isBlank()) {
+                etIcon.error = "Icon is required"
+                return@setOnClickListener
+            }
+
             lifecycleScope.launch {
                 try {
 
-                    // 0. Validate goals BEFORE inserting anything
-                    val catGoal: CategoryGoal? = db.categoryGoalDao().getGoalsByCategory(parentID)
+                    // Code Attribution
+                    // This method of retrieving the current month and year using Calendar.getInstance()
+                    // was referenced from W3Schools
+                    // https://www.w3schools.com/java/java_date.asp
+                    val calendar = Calendar.getInstance()
+                    val month = calendar.get(Calendar.MONTH) + 1
+                    val year = calendar.get(Calendar.YEAR)
+
+                    val catGoal: CategoryGoal? = db.categoryGoalDao().getGoalByCategoryAndMonth(parentID, month, year)
                     val subCatGoals: List<SubCategoryGoal> =
-                        db.subCategoryGoalDao().getGoalsByCategory(parentID)
+                        db.subCategoryGoalDao().getGoalsByCategoryAndMonth(parentID, month, year)
 
                     val totalMinSubGoal: Double = subCatGoals.sumOf { it.minGoal ?: 0.0 }
                     val totalMaxSubGoal: Double = subCatGoals.sumOf { it.maxGoal ?: 0.0 }
@@ -94,7 +103,6 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                         return@launch
                     }
 
-                    // 1. Insert SubCategory ONLY after validation passes
                     val newSubCategory = SubCategory(
                         parentCategoryID = parentID,
                         subCategoryName = name,
@@ -105,9 +113,7 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                     val subCategoryId =
                         db.subCategoryDao().insertSubCategory(newSubCategory).toInt()
 
-                    // 2. Insert SubCategoryGoal if provided
                     if (minGoal != null || maxGoal != null) {
-                        val calendar = Calendar.getInstance()
                         val goal = SubCategoryGoal(
                             subCategoryID = subCategoryId,
                             categoryID = parentID,
@@ -131,12 +137,10 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                         .show()
                 }
             }
-
-            btnCancel.setOnClickListener {
-                parentFragmentManager.popBackStack()
-            }
         }
 
-
+        btnCancel.setOnClickListener {
+            parentFragmentManager.popBackStack()
+        }
     }
 }

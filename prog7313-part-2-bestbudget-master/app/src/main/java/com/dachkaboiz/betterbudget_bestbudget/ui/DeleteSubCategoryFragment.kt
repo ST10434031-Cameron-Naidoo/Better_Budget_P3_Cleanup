@@ -12,10 +12,10 @@ import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategory
 import kotlinx.coroutines.launch
 
-class DeleteSubCategoryFragment  (
+class DeleteSubCategoryFragment (
     private val parentID: Int,
     private val subID: Int
-) : Fragment(R.layout.fragment_delete_subcategory){
+) : Fragment(R.layout.fragment_delete_subcategory) {
     private var targetSubCategory: SubCategory? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -32,30 +32,25 @@ class DeleteSubCategoryFragment  (
         val btnConfirm = view.findViewById<Button>(R.id.btnDeleteSubConfirm)
         val btnCancel = view.findViewById<Button>(R.id.btnDeleteSubCancel)
 
-        // 1. Load Data for the summary card
         lifecycleScope.launch {
             targetSubCategory = db.subCategoryDao().getSubCategoryById(subID)
             val parentCategory = db.categoryDao().getCategoryById(parentID)
             val goal = db.subCategoryGoalDao().getGoalsBySubCategory(subID)
 
             targetSubCategory?.let { sub ->
-                // Note: If you are using real image drawables instead of emojis, you might need an ImageView instead of TextView for the icon.
                 tvIcon.text = sub.subCategoryIcon
                 tvName.text = sub.subCategoryName
                 tvDescription.text = "Description: ${sub.subCategoryDescription ?: "—"}"
             }
 
             tvParent.text = "Parent Category: ${parentCategory?.categoryName ?: "—"}"
-
             tvMinGoal.text = "Min Goal: ${goal?.minGoal?.toString()?.let { "R $it" } ?: "—"}"
             tvMaxGoal.text = "Max Goal: ${goal?.maxGoal?.toString()?.let { "R $it" } ?: "—"}"
         }
 
-        // 2. Delete Logic
         btnConfirm.setOnClickListener {
             lifecycleScope.launch {
 
-                // 1. Check if category has expenses
                 val expenseCount = db.expenseDao().getExpensesBySubCategory(subID)
 
                 if (expenseCount.count() > 0) {
@@ -67,12 +62,11 @@ class DeleteSubCategoryFragment  (
                     return@launch
                 }
 
-                // 2. Safe to delete
                 targetSubCategory?.let { cat ->
                     db.subCategoryDao().deleteSubCategory(cat)
                 }
 
-                Toast.makeText(requireContext(), "Category deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Subcategory deleted", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
             }
         }
