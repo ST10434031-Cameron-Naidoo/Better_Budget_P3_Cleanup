@@ -97,7 +97,7 @@
                 android:id="@+id/btnAddGoal"
                 android:layout_width="120dp"
                 android:layout_height="50dp"
-                android:text="SAVE"
+                android:text="ADD"
                 android:textColor="@color/text_white"
                 android:fontFamily="@font/league_spartan_"
                 android:textStyle="bold"
