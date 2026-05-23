@@ -1,9 +1,9 @@
 <component name="libraryTable">
   <library name="Gradle: androidx.emoji2:emoji2-emojipicker:1.6.0@aar" external-system-id="GRADLE">
     <CLASSES>
-      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/ea175bc16697f871ef5ab22ed1a90c31/transformed/emoji2-emojipicker-1.6.0/res" />
-      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/ea175bc16697f871ef5ab22ed1a90c31/transformed/emoji2-emojipicker-1.6.0/AndroidManifest.xml" />
-      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/ea175bc16697f871ef5ab22ed1a90c31/transformed/emoji2-emojipicker-1.6.0/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/00577dc217489608016b73374aaaa780/transformed/emoji2-emojipicker-1.6.0/res" />
+      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/00577dc217489608016b73374aaaa780/transformed/emoji2-emojipicker-1.6.0/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/00577dc217489608016b73374aaaa780/transformed/emoji2-emojipicker-1.6.0/AndroidManifest.xml" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
