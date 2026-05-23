@@ -35,7 +35,12 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
         val btnAdd = view.findViewById<Button>(R.id.btnSubAdd)
         val btnCancel = view.findViewById<Button>(R.id.btnSubCancel)
 
-        // Add Parent Category Name
+        // Code Attribution
+        // The use of lifecycleScope.launch for running coroutines in a Fragment
+        // was referenced from Stack Overflow
+        // https://stackoverflow.com/questions/54827455/how-to-implement-coroutines-with-room-database
+        // Ravi Kumar
+        // https://stackoverflow.com/users/9581883/ravi-kumar
         lifecycleScope.launch {
             val parentCat = db.categoryDao().getCategoryById(parentID)
             parentCat?.let { cat ->
@@ -48,17 +53,14 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
             val icon = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
 
-            // Goals
             val minGoal = etMinGoal.text.toString().toDoubleOrNull()
             val maxGoal = etMaxGoal.text.toString().toDoubleOrNull()
 
-            // Validate name
             if (name.isEmpty()) {
                 etName.error = "Name is required"
                 return@setOnClickListener
             }
 
-            // Validate icon
             if (icon.isBlank()) {
                 etIcon.error = "Icon is required"
                 return@setOnClickListener
@@ -67,8 +69,10 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
             lifecycleScope.launch {
                 try {
 
-                    // 0. Validate goals BEFORE inserting anything
-                    // FIX 2: Use month-filtered queries instead of unfiltered ones
+                    // Code Attribution
+                    // This method of retrieving the current month and year using Calendar.getInstance()
+                    // was referenced from W3Schools
+                    // https://www.w3schools.com/java/java_date.asp
                     val calendar = Calendar.getInstance()
                     val month = calendar.get(Calendar.MONTH) + 1
                     val year = calendar.get(Calendar.YEAR)
@@ -86,7 +90,6 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                     val safeMinGoal = minGoal ?: 0.0
                     val safeMaxGoal = maxGoal ?: 0.0
 
-                    // Original logic preserved — blocks subcategory goals if no parent goal exists
                     val goalsValid =
                         (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
                                 (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
@@ -100,7 +103,6 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                         return@launch
                     }
 
-                    // 1. Insert SubCategory ONLY after validation passes
                     val newSubCategory = SubCategory(
                         parentCategoryID = parentID,
                         subCategoryName = name,
@@ -111,7 +113,6 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                     val subCategoryId =
                         db.subCategoryDao().insertSubCategory(newSubCategory).toInt()
 
-                    // 2. Insert SubCategoryGoal if provided
                     if (minGoal != null || maxGoal != null) {
                         val goal = SubCategoryGoal(
                             subCategoryID = subCategoryId,
@@ -138,7 +139,6 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
             }
         }
 
-        // FIX 1: btnCancel moved OUTSIDE of btnAdd — now registers immediately on view creation
         btnCancel.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
