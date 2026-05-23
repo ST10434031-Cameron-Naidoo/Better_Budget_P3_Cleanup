@@ -21,10 +21,8 @@ import java.util.Calendar
 
 class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fragment_add_subcategory) {
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
 
         val db = AppDatabase.getDatabase(requireContext())
         // UI References
@@ -37,30 +35,32 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
         val btnAdd = view.findViewById<Button>(R.id.btnSubAdd)
         val btnCancel = view.findViewById<Button>(R.id.btnSubCancel)
 
-
         // Add Parent Category Name
         lifecycleScope.launch {
             val parentCat = db.categoryDao().getCategoryById(parentID)
             parentCat?.let { cat ->
                 tvCatName.setText(cat.categoryName)
-
             }
-
         }
-
-
 
         btnAdd.setOnClickListener {
             val name = etName.text.toString().trim()
-            val icon = etIcon.text.toString().trim().ifBlank { "default_subcategory_icon" }
+            val icon = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
 
             // Goals
             val minGoal = etMinGoal.text.toString().toDoubleOrNull()
             val maxGoal = etMaxGoal.text.toString().toDoubleOrNull()
 
+            // Validate name
             if (name.isEmpty()) {
                 etName.error = "Name is required"
+                return@setOnClickListener
+            }
+
+            // Validate icon
+            if (icon.isBlank()) {
+                etIcon.error = "Icon is required"
                 return@setOnClickListener
             }
 
@@ -68,9 +68,14 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                 try {
 
                     // 0. Validate goals BEFORE inserting anything
-                    val catGoal: CategoryGoal? = db.categoryGoalDao().getGoalsByCategory(parentID)
+                    // FIX 2: Use month-filtered queries instead of unfiltered ones
+                    val calendar = Calendar.getInstance()
+                    val month = calendar.get(Calendar.MONTH) + 1
+                    val year = calendar.get(Calendar.YEAR)
+
+                    val catGoal: CategoryGoal? = db.categoryGoalDao().getGoalByCategoryAndMonth(parentID, month, year)
                     val subCatGoals: List<SubCategoryGoal> =
-                        db.subCategoryGoalDao().getGoalsByCategory(parentID)
+                        db.subCategoryGoalDao().getGoalsByCategoryAndMonth(parentID, month, year)
 
                     val totalMinSubGoal: Double = subCatGoals.sumOf { it.minGoal ?: 0.0 }
                     val totalMaxSubGoal: Double = subCatGoals.sumOf { it.maxGoal ?: 0.0 }
@@ -81,6 +86,7 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                     val safeMinGoal = minGoal ?: 0.0
                     val safeMaxGoal = maxGoal ?: 0.0
 
+                    // Original logic preserved — blocks subcategory goals if no parent goal exists
                     val goalsValid =
                         (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
                                 (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
@@ -107,7 +113,6 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
 
                     // 2. Insert SubCategoryGoal if provided
                     if (minGoal != null || maxGoal != null) {
-                        val calendar = Calendar.getInstance()
                         val goal = SubCategoryGoal(
                             subCategoryID = subCategoryId,
                             categoryID = parentID,
@@ -131,12 +136,11 @@ class AddSubCategoryFragment (private val parentID: Int) : Fragment(R.layout.fra
                         .show()
                 }
             }
-
-            btnCancel.setOnClickListener {
-                parentFragmentManager.popBackStack()
-            }
         }
 
-
+        // FIX 1: btnCancel moved OUTSIDE of btnAdd — now registers immediately on view creation
+        btnCancel.setOnClickListener {
+            parentFragmentManager.popBackStack()
+        }
     }
 }
