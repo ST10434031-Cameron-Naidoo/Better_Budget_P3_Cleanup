@@ -7,13 +7,19 @@ import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
+import java.io.File
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneOffset
@@ -52,11 +58,31 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
             if (granted) openCamera()
             else Toast.makeText(requireContext(), "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
+    private fun createImageUri(): Uri {
+        val photoFile = File(
+            requireContext().externalCacheDir,
+            "user_${System.currentTimeMillis()}.jpg"
+        )
+
+        // ⭐ Ensure the file actually exists on disk
+        photoFile.createNewFile()
+
+        return FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.provider",
+            photoFile
+        )
+    }
+
 
     private fun openCamera() {
-        currentImageUri = ImageUtils.createImageFile(requireContext())
-        takePictureLauncher.launch(currentImageUri)
+        currentImageUri = createImageUri()
+        // Open camera safely
+        currentImageUri?.let { uri ->
+            // Launch camera
+            takePictureLauncher.launch(uri)
     }
+}
 
     // TAKE PICTURE
     private val takePictureLauncher =
@@ -137,19 +163,22 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
                     val birthDate = snapshot.child("birthDate").value?.toString()?.toLongOrNull()
                     val age = snapshot.child("age").value?.toString()
 
+
                     etProfileName.setText(firstName ?: "")
                     etProfileLastName.setText(lastName ?: "")
                     etEmail.setText(email ?: "")
                     tvAge.text = age ?: ""
 
                     // Load profile picture
-                    val storageRef = storage.reference.child("profile_pictures/$uid.jpg")
-                    storageRef.downloadUrl.addOnSuccessListener { uri ->
+                    val profilePicUrl = snapshot.child("profilePicUrl").value?.toString()
+
+                    if (!profilePicUrl.isNullOrEmpty()) {
                         Glide.with(requireContext())
-                            .load(uri)
+                            .load(profilePicUrl)
                             .placeholder(R.drawable.ic_profile)
                             .into(ivProfilePicture)
                     }
+
 
                     if (birthDate != null) {
                         val localDate = java.time.Instant.ofEpochMilli(birthDate)
@@ -225,24 +254,53 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
             birthDateMillis?.let { updates["birthDate"] = it }
             age?.let { updates["age"] = it }
 
+
             database.child("users").child(uid)
                 .updateChildren(updates)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
 
-                        // Upload profile picture if changed
-                        currentImageUri?.let { uri ->
+                        if (currentImageUri != null) {
                             val storageRef = storage.reference.child("profile_pictures/$uid.jpg")
-                            storageRef.putFile(uri)
+
+                            storageRef.putFile(currentImageUri!!)
+                                .addOnSuccessListener {
+                                    storageRef.downloadUrl
+                                        .addOnSuccessListener { downloadUrl ->
+
+                                            database.child("users").child(uid)
+                                                .child("profilePicUrl")
+                                                .setValue(downloadUrl.toString())
+                                                .addOnSuccessListener {
+                                                    Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show()
+
+                                                    val intent = Intent(requireContext(), MainActivity::class.java)
+                                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                    startActivity(intent)
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    Toast.makeText(requireContext(), "Failed to save image URL: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Toast.makeText(requireContext(), "Failed to get download URL: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                }
+                                .addOnFailureListener { e ->
+                                    Toast.makeText(requireContext(), "Image upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+
+                        } else {
+                            // No image selected → just navigate
+                            Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show()
+
+                            val intent = Intent(requireContext(), MainActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(intent)
                         }
+                    }
 
-                        Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show()
-
-                        val intent = Intent(requireContext(), MainActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-
-                    } else {
+                    else {
                         Toast.makeText(
                             requireContext(),
                             task.exception?.message ?: "Failed to update profile",
