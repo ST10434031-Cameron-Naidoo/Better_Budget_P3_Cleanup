@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "649255330633",
+    "firebase_url": "https://betterbudget-2cbd0-default-rtdb.firebaseio.com",
+    "project_id": "betterbudget-2cbd0",
+    "storage_bucket": "betterbudget-2cbd0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:649255330633:android:4590efdae308f7717db098",
+        "android_client_info": {
+          "package_name": "com.dachkaboiz.betterbudget_bestbudget"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABRPcRX85hOixAdbspYtdb3jfa7Bc5InU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -22,6 +22,13 @@ import com.dachkaboiz.betterbudget_bestbudget.viewmodel.UserViewModelFactory
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneOffset
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.auth.FirebaseAuth
 
 
 class RegisterActivity : BaseRegister() {
@@ -29,10 +36,17 @@ class RegisterActivity : BaseRegister() {
     private lateinit var signUpBtn: Button
     private lateinit var loginTv: TextView
     private lateinit var userViewModel: UserViewModel
+    private lateinit var database: DatabaseReference
+    private lateinit var storage: FirebaseStorage
+
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_register)
+        database = FirebaseDatabase.getInstance().reference
+        storage = FirebaseStorage.getInstance()
         val spinnerDay = findViewById<Spinner>(R.id.spDay)
         val spinnerMonth = findViewById<Spinner>(R.id.spMonth)
         val spinnerYear = findViewById<Spinner>(R.id.spYear)
@@ -158,16 +172,67 @@ class RegisterActivity : BaseRegister() {
                     .toEpochMilli()
             }
 
-            val user = User(
-                email = email,
-                password = password,
-                firstName = firstName,
-                surname = lastName,
-                birthDate = birthDateMillis,
-                age = age,
-                profilePicUri = null
-            )
-            userViewModel.register(user)
+            // -------------------------
+            // FIREBASE REGISTRATION
+            // -------------------------
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+
+                        val uid = auth.currentUser!!.uid
+
+                        val userData = hashMapOf(
+                            "firstName" to firstName,
+                            "lastName" to lastName,
+                            "email" to email,
+                            "birthDate" to birthDateMillis,
+                            "age" to age
+                        )
+
+                        database.child("users")
+                            .child(uid)
+                            .setValue(userData)
+                            .addOnSuccessListener {
+                                AlertDialog.Builder(this)
+                                    .setTitle("Account Created")
+                                    .setMessage("Your account has been created successfully")
+                                    .setPositiveButton("Continue") { _, _ ->
+                                        startActivity(Intent(this, LoginActivity::class.java))
+                                        finish()
+                                    }
+                                    .setCancelable(false)
+                                    .show()
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(this, "Failed to save user data: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+
+                            .addOnSuccessListener {
+
+                                AlertDialog.Builder(this)
+                                    .setTitle("Account Created")
+                                    .setMessage("Your account has been created successfully")
+                                    .setPositiveButton("Continue") { _, _ ->
+                                        startActivity(Intent(this, LoginActivity::class.java))
+                                        finish()
+                                    }
+                                    .setCancelable(false)
+                                    .show()
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(this, "Failed to save user data: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+
+                    } else {
+                        Toast.makeText(
+                            this,
+                            task.exception?.message ?: "Registration failed",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+
 
         }
         observeRegisterState()

@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/Better_Budget_P3_Cleanup.iml" filepath="$PROJECT_DIR$/.idea/Better_Budget_P3_Cleanup.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/BetterBudget_BestBudget.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/BetterBudget_BestBudget.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/BetterBudget_BestBudget.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/BetterBudget_BestBudget.app.unitTest.iml" />
     </modules>
   </component>
 </project>
