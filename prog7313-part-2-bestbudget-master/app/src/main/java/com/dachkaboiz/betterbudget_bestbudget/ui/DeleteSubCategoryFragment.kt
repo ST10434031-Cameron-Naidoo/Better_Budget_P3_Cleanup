@@ -72,7 +72,7 @@ class DeleteSubCategoryFragment  (
                     db.subCategoryDao().deleteSubCategory(cat)
                 }
 
-                Toast.makeText(requireContext(), "Category deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Subcategory deleted", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
             }
         }
