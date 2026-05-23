@@ -39,14 +39,18 @@ class UpdateSubCategoryFragment (
         // 1. Load existing data
         lifecycleScope.launch {
             currentSubCategory = db.subCategoryDao().getSubCategoryById(subID)
-           val currentCategory = db.categoryDao().getCategoryById(parentID)
+            val currentCategory = db.categoryDao().getCategoryById(parentID)
 
-            // Get goals (getting the first one for the current subcategory)
-            val goals = db.subCategoryGoalDao().getGoalsBySubCategory(subID)
-            currentGoal = goals
+            // FIX 4: Load goal for current month only, not LIMIT 1 across all months
+            val calendar = Calendar.getInstance()
+            val month = calendar.get(Calendar.MONTH) + 1
+            val year = calendar.get(Calendar.YEAR)
+            currentGoal = db.subCategoryGoalDao().getGoalBySubCategoryAndMonth(subID, month, year)
+
             currentCategory?.let { cat ->
                 primaryName.setText(cat.categoryName)
             }
+
             // Populate UI
             currentSubCategory?.let { sub ->
                 etName.setText(sub.subCategoryName)
@@ -63,7 +67,7 @@ class UpdateSubCategoryFragment (
         // 2. Handle Update
         btnUpdate.setOnClickListener {
             val name = etName.text.toString().trim()
-            val icon = etIcon.text.toString().trim().ifBlank { "default_subcategory_icon" }
+            val icon = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
             val minGoal = etMinGoal.text.toString().toDoubleOrNull()
             val maxGoal = etMaxGoal.text.toString().toDoubleOrNull()
@@ -73,11 +77,21 @@ class UpdateSubCategoryFragment (
                 return@setOnClickListener
             }
 
+            if (icon.isBlank()) {
+                etIcon.error = "Icon is required"
+                return@setOnClickListener
+            }
+
             lifecycleScope.launch {
 
                 // 0. Load parent + existing sub goals BEFORE updating anything
-                val catGoal = db.categoryGoalDao().getGoalsByCategory(parentID)
-                val subCatGoals = db.subCategoryGoalDao().getGoalsByCategory(parentID)
+                // FIX 2: Use month-filtered queries instead of unfiltered ones
+                val calendar = Calendar.getInstance()
+                val month = calendar.get(Calendar.MONTH) + 1
+                val year = calendar.get(Calendar.YEAR)
+
+                val catGoal = db.categoryGoalDao().getGoalByCategoryAndMonth(parentID, month, year)
+                val subCatGoals = db.subCategoryGoalDao().getGoalsByCategoryAndMonth(parentID, month, year)
 
                 // Remove current goal from totals (because we are updating it)
                 val filteredSubGoals = subCatGoals.filter { it.subCategoryID != subID }
@@ -91,7 +105,7 @@ class UpdateSubCategoryFragment (
                 val safeMinGoal = minGoal ?: 0.0
                 val safeMaxGoal = maxGoal ?: 0.0
 
-                // Validate BEFORE updating anything
+                // Original logic preserved — blocks subcategory goals if no parent goal exists
                 val goalsValid =
                     (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
                             (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
@@ -141,7 +155,8 @@ class UpdateSubCategoryFragment (
                 parentFragmentManager.popBackStack()
             }
         }
-            btnCancel.setOnClickListener {
+
+        btnCancel.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
     }
