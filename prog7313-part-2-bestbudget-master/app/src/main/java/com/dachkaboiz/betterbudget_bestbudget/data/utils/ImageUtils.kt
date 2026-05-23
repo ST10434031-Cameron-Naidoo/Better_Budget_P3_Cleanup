@@ -13,6 +13,12 @@ import android.os.Build
 
 object ImageUtils {
     // Function to create an image file and return its URI. Takes the app context as a parameter.
+
+    // Code Attribution
+    // This method was taken from Stack Overflow
+    // https://stackoverflow.com/questions/38200282
+    // CommonsWare
+    // https://stackoverflow.com/users/115145/commonsware
     fun createImageFile(context: Context): Uri {
         // Creates a timestamp using the current date and time.
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -36,6 +42,11 @@ object ImageUtils {
         )
     }
 
+    // Code Attribution
+    // This method was taken from Stack Overflow
+    // https://stackoverflow.com/questions/56904485
+    // Android Admirer
+    // https://stackoverflow.com/users/6377726/android-admirer
     fun saveImageToGallery(context: Context, imageFile: File) {
         val filename = "Receipt_${System.currentTimeMillis()}.jpg"
         val contentValues = ContentValues().apply {

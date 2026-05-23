@@ -8,7 +8,6 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
-import android.widget.RadioGroup
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,8 +40,8 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
     private var categoryList: List<Category> = emptyList()
 
 
-    private lateinit var ivPreview: ImageView
-    private lateinit var vPlaceholder: View
+
+
 
 
 
@@ -99,9 +98,7 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
         if (bitmap != null) {
             // Note: For a production app, save bitmap to file and get URI
             // For now, we update the preview directly
-            ivPreview.setImageBitmap(bitmap)
-            ivPreview.visibility = View.VISIBLE
-            vPlaceholder.visibility = View.GONE
+
         }
 
 
@@ -112,9 +109,9 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
             .getString("email", "") ?: ""
     }
 
-    // -----------------------------------------------------------------------
+
     // onViewCreated
-    // -----------------------------------------------------------------------
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -148,9 +145,9 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
         val btnCancel       = view.findViewById<Button>(R.id.btnEditExpenseCancel)
         val btnUpdate       = view.findViewById<Button>(R.id.btnEditExpenseUpdate)
 
-        // -----------------------------------------------------------------------
+
         // Load categories then pre-fill the form with the existing expense
-        // -----------------------------------------------------------------------
+
         // Load Categories and Prefill Form
         lifecycleScope.launch {
             categoryList = categoryRepository.getCategoriesByUser(currentUserEmail)
@@ -195,9 +192,9 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
             }
         }
 
-        // -----------------------------------------------------------------------
+
         // Button listeners
-        // -----------------------------------------------------------------------
+
 
 
         btnCamera.setOnClickListener {
@@ -213,44 +210,77 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
         }
 
         btnUpdate.setOnClickListener {
-            // Validation Logic 
-            val day = etDay.text.toString().toIntOrNull() ?: 1
-            val month = etMonth.text.toString().toIntOrNull() ?: 1
-            val year = etYear.text.toString().toIntOrNull() ?: 2024
+            val dayText     = etDay.text.toString().trim()
+            val monthText   = etMonth.text.toString().trim()
+            val yearText    = etYear.text.toString().trim()
+            val amountText  = etAmount.text.toString().trim()
+            val description = etDescription.text.toString().trim()
 
+            // Validation — same rules as AddExpenseFragment for consistency
+            var hasError = false
 
+            val amountDouble = amountText.toDoubleOrNull()
+            if (amountText.isEmpty() || amountDouble == null || amountDouble <= 0) {
+                etAmount.error = "Enter a valid amount greater than 0"
+                hasError = true
+            }
+
+            val day = dayText.toIntOrNull()
+            if (day == null || day < 1 || day > 31) {
+                etDay.error = "1–31"
+                hasError = true
+            }
+
+            val month = monthText.toIntOrNull()
+            if (month == null || month < 1 || month > 12) {
+                etMonth.error = "1–12"
+                hasError = true
+            }
+
+            val year = yearText.toIntOrNull()
+            if (year == null || year < 2000 || year > 2100) {
+                etYear.error = "e.g. 2025"
+                hasError = true
+            }
+
+            if (selectedCategoryId == -1) {
+                Toast.makeText(
+                    requireContext(),
+                    "Please select a category",
+                    Toast.LENGTH_SHORT
+                ).show()
+                hasError = true
+            }
+
+            if (hasError) return@setOnClickListener
 
             val cal = Calendar.getInstance().apply {
-                set(year, month - 1, day, 0, 0, 0)
+                set(year!!, month!! - 1, day!!, 0, 0, 0)
                 set(Calendar.MILLISECOND, 0)
             }
 
-
-
             val updatedExpense = Expense(
-                expenseID = editingExpenseId,
-                userEmail = currentUserEmail,
-                categoryID = selectedCategoryId,
-                subCategoryID = null,
-                expenseAmount = etAmount.text.toString().toDoubleOrNull() ?: 0.0,
-                expenseDate = cal.timeInMillis,
-                expenseDescription = etDescription.text.toString().ifEmpty { null },
-                imageUri = currentImageUri?.toString(),
+                expenseID           = editingExpenseId,
+                userEmail           = currentUserEmail,
+                categoryID          = selectedCategoryId,
+                subCategoryID       = null,
+                expenseAmount       = amountDouble!!,
+                expenseDate         = cal.timeInMillis,
+                expenseDescription  = description.ifEmpty { null },
+                imageUri            = currentImageUri?.toString(),
                 imageName           = null,
                 imageDescription    = null,
-                automationFrequency = null // Handled by "Coming Soon" logic
+                automationFrequency = null // TODO Part 3: Wire up automation frequency
             )
 
             lifecycleScope.launch {
                 repository.updateExpense(updatedExpense)
-                Toast.makeText(requireContext(), "Expense Updated", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Expense updated!", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
             }
         }
     }
     private fun updateImagePreview(uri: Uri) {
-        ivPreview.setImageURI(uri)
-        ivPreview.visibility = View.VISIBLE
-        vPlaceholder.visibility = View.GONE
+
     }
 }

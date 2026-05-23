@@ -25,6 +25,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import android.widget.Toast
 
 class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
 
@@ -141,8 +142,27 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
 
             val from = dateFrom
             val to   = dateTo
-            if (from != null) expenses = expenses.filter { it.expenseDate >= from }
-            if (to   != null) expenses = expenses.filter { it.expenseDate <= to }
+
+// Guard: warn user if FROM is set after TO
+            if (from != null && to != null && from > to) {
+                Toast.makeText(
+                    requireContext(),
+                    "FROM date cannot be after TO date — clearing filters",
+                    Toast.LENGTH_SHORT
+                ).show()
+                dateFrom = null
+                dateTo = null
+                tvDateFrom.text = "Select ⌵"
+                tvDateTo.text = "Select ⌵"
+            } else {
+                if (from != null) expenses = expenses.filter { it.expenseDate >= from }
+                if (to   != null) expenses = expenses.filter { it.expenseDate <= to }
+            }
+
+
+            // This method was taken from Kotlin Documentation
+            // https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/sorted-by.html
+            // JetBrains
 
             val sorted = when (rgSortOrder.checkedRadioButtonId) {
                 R.id.rbSortFirstAdded -> expenses.sortedBy { it.expenseID }
@@ -184,6 +204,13 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
             .addToBackStack(null)
             .commit()
     }
+
+
+    // Code Attribution
+    // This method was taken from Stack Overflow
+    // https://stackoverflow.com/questions/14933330
+    // Daniel Jonker
+    // https://stackoverflow.com/users/1058592/daniel-jonker
 
     private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
         val calendar = Calendar.getInstance()

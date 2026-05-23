@@ -58,7 +58,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
             .getString("email", "") ?: ""
     }
 
-    // -----------------------------------------------------------------------
+    //
     private var currentImageUri: Uri? = null
 
     private lateinit var ivPhotoPreview: ImageView
@@ -212,9 +212,9 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
 
         // Fragment result listeners registered before any coroutine
 
-
+        // TODO Part 3: Re-enable snooze result listener when SnoozeDialogFragment is wired up
         // Receive snooze dialog result from SnoozeDialogFragment
-        parentFragmentManager.setFragmentResultListener(
+          parentFragmentManager.setFragmentResultListener(
             "snooze_result", viewLifecycleOwner
         ) { _, bundle ->
             when (bundle.getString("action")) {
@@ -398,7 +398,9 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
                     //automationFrequency = frequencyLabel
                 )
 
+                // TODO Part 3: Re-enable snooze pre-commit budget check when snooze is wired up
                 // Snooze pre-commit check
+
                 lifecycleScope.launch {
                     val startOfMonth = Calendar.getInstance().apply {
                         set(year, month - 1, 1, 0, 0, 0)
@@ -427,7 +429,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
                             .getCategoryById(selectedCategoryId)
                             ?.categoryName ?: "Category $selectedCategoryId"
 
-                        SnoozeDialogFragment.newInstance(
+                         SnoozeDialogFragment.newInstance(
                             categoryName = catName,
                             currentTotal = currentTotal,
                             maxGoal      = maxGoal,

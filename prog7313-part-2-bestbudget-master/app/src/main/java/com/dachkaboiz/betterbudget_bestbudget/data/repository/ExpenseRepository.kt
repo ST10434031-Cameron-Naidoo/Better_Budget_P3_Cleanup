@@ -2,7 +2,6 @@ package com.dachkaboiz.betterbudget_bestbudget.data.repository
 
 import com.dachkaboiz.betterbudget_bestbudget.data.dao.ExpenseDao
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
-import kotlin.math.exp
 
 class ExpenseRepository (private val expenseDao: ExpenseDao){
 
