@@ -31,7 +31,6 @@ import java.io.File
 import android.content.Intent
 
 
-
 class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
 
 
@@ -464,4 +463,6 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
         pendingExpense = null
         parentFragmentManager.popBackStack()
     }
+
+
 }
