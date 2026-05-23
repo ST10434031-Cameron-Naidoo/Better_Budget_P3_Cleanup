@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import android.content.res.ColorStateList
 import android.util.Patterns
 import com.dachkaboiz.betterbudget_bestbudget.R
+import com.google.firebase.auth.FirebaseAuth
+
 
 
 open class BaseRegister : AppCompatActivity() {
@@ -24,6 +26,8 @@ open class BaseRegister : AppCompatActivity() {
     protected lateinit var newPassword: EditText
     protected lateinit var email: EditText
     protected lateinit var firstName: EditText
+    protected lateinit var auth: FirebaseAuth
+
     protected lateinit var lastName: EditText
 
     protected lateinit var confirmPassword: EditText
@@ -89,6 +93,8 @@ open class BaseRegister : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        auth = FirebaseAuth.getInstance()
+
     }
 
     protected fun initPasswordViews(

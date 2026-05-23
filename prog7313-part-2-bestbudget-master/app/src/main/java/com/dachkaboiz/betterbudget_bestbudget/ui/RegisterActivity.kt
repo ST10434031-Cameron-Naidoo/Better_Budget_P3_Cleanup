@@ -22,9 +22,11 @@ import com.dachkaboiz.betterbudget_bestbudget.viewmodel.UserViewModelFactory
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneOffset
+import com.google.firebase.auth.FirebaseAuth
 
 
 class RegisterActivity : BaseRegister() {
+
 
     private lateinit var signUpBtn: Button
     private lateinit var loginTv: TextView
@@ -158,16 +160,32 @@ class RegisterActivity : BaseRegister() {
                     .toEpochMilli()
             }
 
-            val user = User(
-                email = email,
-                password = password,
-                firstName = firstName,
-                surname = lastName,
-                birthDate = birthDateMillis,
-                age = age,
-                profilePicUri = null
-            )
-            userViewModel.register(user)
+            // -------------------------
+            // FIREBASE REGISTRATION
+            // -------------------------
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+
+                        AlertDialog.Builder(this)
+                            .setTitle("Account Created")
+                            .setMessage("Your account has been created successfully")
+                            .setPositiveButton("Continue") { _, _ ->
+                                startActivity(Intent(this, LoginActivity::class.java))
+                                finish()
+                            }
+                            .setCancelable(false)
+                            .show()
+
+                    } else {
+                        Toast.makeText(
+                            this,
+                            task.exception?.message ?: "Registration failed",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
 
         }
         observeRegisterState()
