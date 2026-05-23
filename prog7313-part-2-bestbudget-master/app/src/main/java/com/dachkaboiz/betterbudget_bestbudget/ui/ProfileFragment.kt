@@ -3,20 +3,17 @@ package com.dachkaboiz.betterbudget_bestbudget.ui
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.Fragment
+import com.bumptech.glide.Glide
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase.Companion.getDatabase
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.UserRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
-import com.dachkaboiz.betterbudget_bestbudget.databinding.FragmentProfileBinding
-import com.dachkaboiz.betterbudget_bestbudget.viewmodel.UserViewModel
-import com.dachkaboiz.betterbudget_bestbudget.viewmodel.UserViewModelFactory
-import java.time.Instant
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
+import com.google.firebase.storage.FirebaseStorage
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneOffset
@@ -24,7 +21,9 @@ import java.util.*
 
 class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
 
-    private lateinit var userViewModel: UserViewModel
+    private lateinit var auth: FirebaseAuth
+    private lateinit var database: DatabaseReference
+    private lateinit var storage: FirebaseStorage
 
     private lateinit var etEmail: EditText
     private lateinit var etProfileName: EditText
@@ -40,44 +39,38 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
     private lateinit var spProfileDay: Spinner
     private lateinit var spProfileMonth: Spinner
     private lateinit var spProfileYear: Spinner
+
+    private var currentImageUri: Uri? = null
     private var isInitializing = false
-
-
 
     private val today = Calendar.getInstance()
     private val thisYear = today.get(Calendar.YEAR)
 
-    private var currentImageUri: Uri? = null
+    // CAMERA PERMISSION
     private val requestPermissionLauncher =
-// Activity Result API launcher used for requesting camera permission.
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                openCamera()
-            } else {
-                Toast.makeText(requireContext(), "Camera permission denied", Toast.LENGTH_SHORT).show()
-            }
+            if (granted) openCamera()
+            else Toast.makeText(requireContext(), "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
+
     private fun openCamera() {
         currentImageUri = ImageUtils.createImageFile(requireContext())
         takePictureLauncher.launch(currentImageUri)
     }
-    // Camera launcher to take picture into provided URI
+
+    // TAKE PICTURE
     private val takePictureLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success && currentImageUri != null) {
-
-                // Show image in UI
                 ivProfilePicture.setImageURI(currentImageUri)
-
-                // Do NOT save here — saving happens when UPDATE is clicked
-
             } else {
                 Toast.makeText(requireContext(), "Could not take picture", Toast.LENGTH_SHORT).show()
             }
         }
 
+    // PICK IMAGE
     private val pickImageLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
                 currentImageUri = uri
                 ivProfilePicture.setImageURI(uri)
@@ -87,10 +80,12 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        auth = FirebaseAuth.getInstance()
+        database = FirebaseDatabase.getInstance().reference
+        storage = FirebaseStorage.getInstance()
+
         bindViews(view)
         setupSpinners()
-
-        setupViewModel()
         loadUserData()
         setupUpdateButton()
         setupLogoutButton()
@@ -98,7 +93,7 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
     }
 
     // ---------------------------------------------------------
-    // View Binding
+    // Bind Views
     // ---------------------------------------------------------
     private fun bindViews(view: View) {
         spProfileDay = view.findViewById(R.id.spProfileDay)
@@ -108,137 +103,109 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
         etProfileName = view.findViewById(R.id.etProfileFirstName)
         etProfileLastName = view.findViewById(R.id.etProfileLastName)
         etEmail = view.findViewById(R.id.etProfileEmail)
-
         tvAge = view.findViewById(R.id.tvProfileAge)
+
+        ivProfilePicture = view.findViewById(R.id.ivProfilePicture)
         tvUploadProfilePicture = view.findViewById(R.id.tvUploadProfilePicture)
         tvTakeProfilePicture = view.findViewById(R.id.tvTakeProfilePicture)
-        ivProfilePicture = view.findViewById(R.id.ivProfilePicture)
-        tvUploadProfilePicture.setOnClickListener {
-            pickImageLauncher.launch("image/*")
-        }
-
-        tvTakeProfilePicture.setOnClickListener {
-            requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-        }
 
         btnLogout = view.findViewById(R.id.btnProfileLogOut)
         btnUpdate = view.findViewById(R.id.btnProfileUpdate)
         btnDelete = view.findViewById(R.id.btnProfileDelete)
+
+        tvUploadProfilePicture.setOnClickListener { pickImageLauncher.launch("image/*") }
+        tvTakeProfilePicture.setOnClickListener {
+            requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+        }
     }
 
     // ---------------------------------------------------------
-    // ViewModel Setup
-    // ---------------------------------------------------------
-    private fun setupViewModel() {
-        val dao = getDatabase(requireContext()).userDao()
-        val repository = UserRepository(dao)
-        val factory = UserViewModelFactory(repository)
-        userViewModel = ViewModelProvider(this, factory)[UserViewModel::class.java]
-    }
-
-    // ---------------------------------------------------------
-    // Load User Data
+    // Load User Data from Firebase
     // ---------------------------------------------------------
     private fun loadUserData() {
-        val prefs = requireActivity().getSharedPreferences("auth", 0)
-        val email = prefs.getString("email", null)
+        val uid = auth.currentUser?.uid ?: return
 
-        if (email != null) userViewModel.loadUser(email)
+        database.child("users").child(uid)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
 
-        userViewModel.user.observe(viewLifecycleOwner) { user ->
-            if (user != null) {
-                etEmail.setText(user.email)
-                etProfileName.setText(user.firstName ?: "")
-                etProfileLastName.setText(user.surname ?: "")
-                if (user.profilePicUri != null) {
-                    ivProfilePicture.setImageURI(Uri.parse(user.profilePicUri))
+                    if (!snapshot.exists()) return
+
+                    val firstName = snapshot.child("firstName").value?.toString()
+                    val lastName = snapshot.child("lastName").value?.toString()
+                    val email = snapshot.child("email").value?.toString()
+                    val birthDate = snapshot.child("birthDate").value?.toString()?.toLongOrNull()
+                    val age = snapshot.child("age").value?.toString()
+
+                    etProfileName.setText(firstName ?: "")
+                    etProfileLastName.setText(lastName ?: "")
+                    etEmail.setText(email ?: "")
+                    tvAge.text = age ?: ""
+
+                    // Load profile picture
+                    val storageRef = storage.reference.child("profile_pictures/$uid.jpg")
+                    storageRef.downloadUrl.addOnSuccessListener { uri ->
+                        Glide.with(requireContext())
+                            .load(uri)
+                            .placeholder(R.drawable.ic_profile)
+                            .into(ivProfilePicture)
+                    }
+
+                    if (birthDate != null) {
+                        val localDate = java.time.Instant.ofEpochMilli(birthDate)
+                            .atZone(ZoneOffset.UTC)
+                            .toLocalDate()
+
+                        isInitializing = true
+
+                        // REMOVE LISTENERS
+                        spProfileYear.onItemSelectedListener = null
+                        spProfileMonth.onItemSelectedListener = null
+
+                        // YEAR
+                        spProfileYear.setSelection(getYearIndex(localDate.year))
+
+                        // MONTH
+                        spProfileMonth.setSelection(localDate.monthValue)
+
+                        // REBUILD DAYS BEFORE SELECTING DAY
+                        updateDaysSpinner(spProfileDay, localDate.monthValue, localDate.year)
+
+                        // DAY
+                        spProfileDay.setSelection(localDate.dayOfMonth)
+
+                        isInitializing = false
+
+                    }
+
+
+
+
                 }
-                spProfileYear.onItemSelectedListener = null
-                spProfileMonth.onItemSelectedListener = null
 
-                if (user.birthDate != null) {
-
-                    val localDate = Instant.ofEpochMilli(user.birthDate)
-                        .atZone(ZoneOffset.UTC)
-                        .toLocalDate()
-
-                    isInitializing = true
-
-                    val yearIndex = getYearIndex(localDate.year)
-                    spProfileYear.setSelection(yearIndex)
-
-                    val monthIndex = localDate.monthValue
-                    spProfileMonth.setSelection(monthIndex)
-
-                    updateDaysSpinner(spProfileDay, monthIndex, localDate.year)
-
-                    val dayIndex = localDate.dayOfMonth
-                    spProfileDay.setSelection(dayIndex)
-
-                    isInitializing = false
-
-
-                    tvAge.text = user.age?.toString() ?: ""
-                }
-
-
-            }
-
-        }
+                override fun onCancelled(error: DatabaseError) {}
+            })
     }
 
     // ---------------------------------------------------------
-    // Spinner Setup
-    // ---------------------------------------------------------
-
-    private fun setupSpinners() {
-
-        // Build adapters ONLY — no selections, no null/null
-        setupYearSpinner(spProfileYear)
-        updateMonthSpinner(spProfileMonth)
-        updateDaysSpinner(spProfileDay, 1, 2000) // temporary valid month/year
-
-        // Attach listeners
-        spProfileYear.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
-                if (isInitializing) return
-                // Year change does nothing
-            }
-            override fun onNothingSelected(parent: AdapterView<*>) {}
-        }
-
-        spProfileMonth.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
-                if (isInitializing) return
-                val year = spProfileYear.selectedItem.toString().toIntOrNull()
-                updateDaysSpinner(spProfileDay, pos, year)
-            }
-            override fun onNothingSelected(parent: AdapterView<*>) {}
-        }
-    }
-    // ---------------------------------------------------------
-    // Update Button Logic
+    // Update Profile
     // ---------------------------------------------------------
     private fun setupUpdateButton() {
         btnUpdate.setOnClickListener {
-            val email = etEmail.text.toString().trim()
-            val firstName = etProfileName.text.toString().trim().ifEmpty { null }
-            val surname = etProfileLastName.text.toString().trim().ifEmpty { null }
+            val uid = auth.currentUser?.uid ?: return@setOnClickListener
 
-            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            val firstNameText = etProfileName.text.toString().trim().ifEmpty { null }
+            val lastNameText = etProfileLastName.text.toString().trim().ifEmpty { null }
+            val emailText = etEmail.text.toString().trim()
+
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(emailText).matches()) {
                 Toast.makeText(requireContext(), "Invalid email format", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             val year = spProfileYear.selectedItem.toString().toIntOrNull()
-
-            val month = spProfileMonth.selectedItemPosition.let {
-                if (it > 0) it else null
-            }
-
-            val day = spProfileDay.selectedItemPosition.let {
-                if (it > 0) it else null
-            }
+            val month = spProfileMonth.selectedItemPosition.takeIf { it > 0 }
+            val day = spProfileDay.selectedItemPosition.takeIf { it > 0 }
 
             var age: Int? = null
             var birthDateMillis: Long? = null
@@ -251,42 +218,59 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
                     .toEpochMilli()
             }
 
-            userViewModel.updateUserProfile(
-                firstName = firstName,
-                lastName = surname,
-                email = email,
-                birthDate = birthDateMillis,
-                age = age,
-                profilePicUri = currentImageUri?.toString()
-            )
+            val updates = mutableMapOf<String, Any>()
+            firstNameText?.let { updates["firstName"] = it }
+            lastNameText?.let { updates["lastName"] = it }
+            updates["email"] = emailText
+            birthDateMillis?.let { updates["birthDate"] = it }
+            age?.let { updates["age"] = it }
 
-            requireActivity()
-                .supportFragmentManager
-                .beginTransaction()
-                .replace(R.id.mainFragment, ProfileFragment())
-                .addToBackStack(null)
-                .commit()
+            database.child("users").child(uid)
+                .updateChildren(updates)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+
+                        // Upload profile picture if changed
+                        currentImageUri?.let { uri ->
+                            val storageRef = storage.reference.child("profile_pictures/$uid.jpg")
+                            storageRef.putFile(uri)
+                        }
+
+                        Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show()
+
+                        val intent = Intent(requireContext(), MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            task.exception?.message ?: "Failed to update profile",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
         }
-
     }
+
+
+
+    // ---------------------------------------------------------
+    // Logout
+    // ---------------------------------------------------------
     private fun setupLogoutButton() {
         btnLogout.setOnClickListener {
-
             AlertDialog.Builder(requireContext())
                 .setTitle("Confirm Logout")
                 .setMessage("Are you sure you want to log out?")
                 .setPositiveButton("LOG OUT") { _, _ ->
+                    auth.signOut()
 
-                    // 1. Clear saved login email
                     val prefs = requireActivity().getSharedPreferences("auth", 0)
                     prefs.edit().clear().apply()
 
-                    // 2. Navigate to LoginActivity
                     val intent = Intent(requireContext(), LoginActivity::class.java)
-
-                    // 3. Clear back stack so user cannot return with Back button
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-
                     startActivity(intent)
                 }
                 .setNegativeButton("CANCEL", null)
@@ -294,24 +278,66 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
         }
     }
 
+    // ---------------------------------------------------------
+    // Delete Account
+    // ---------------------------------------------------------
     private fun setupDeleteButton() {
         btnDelete.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.mainFragment, DeleteProfileFragment())
-                .addToBackStack(null)
-                .commit()
+            AlertDialog.Builder(requireContext())
+                .setTitle("Delete Account")
+                .setMessage("This action cannot be undone.")
+                .setPositiveButton("DELETE") { _, _ ->
+                    val uid = auth.currentUser?.uid ?: return@setPositiveButton
+
+                    // Delete from Realtime DB
+                    database.child("users").child(uid).removeValue()
+
+                    // Delete profile picture
+                    storage.reference.child("profile_pictures/$uid.jpg").delete()
+
+                    // Delete FirebaseAuth account
+                    auth.currentUser?.delete()
+
+                    val intent = Intent(requireContext(), LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                }
+                .setNegativeButton("CANCEL", null)
+                .show()
+        }
+    }
+    private fun setupSpinners() {
+        setupYearSpinner(spProfileYear)
+        updateMonthSpinner(spProfileMonth)
+        updateDaysSpinner(spProfileDay, 1, 2000)
+
+        attachSpinnerListeners()
+    }
+
+    private fun attachSpinnerListeners() {
+        spProfileMonth.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                if (isInitializing) return
+                val year = spProfileYear.selectedItem.toString().toIntOrNull()
+                updateDaysSpinner(spProfileDay, pos, year)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+
+        spProfileYear.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                if (isInitializing) return
+                // Year change does nothing for now
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
         }
     }
 
 
     // ---------------------------------------------------------
-    // Helper Functions
+    // Helpers
     // ---------------------------------------------------------
-    private fun getYearIndex(year: Int): Int =
-        (year - 1930) + 1
-
-
-
+    private fun getYearIndex(year: Int): Int = (year - 1930) + 1
     private fun setupYearSpinner(spinner: Spinner) {
         val years = mutableListOf("YYYY") + (1930..thisYear).map { it.toString() }
 
@@ -323,7 +349,6 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
     }
-
     private fun updateMonthSpinner(spinner: Spinner) {
         val months = mutableListOf("MM") + listOf(
             "January","February","March","April","May","June",
@@ -339,27 +364,25 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
         }
     }
 
-
     private fun updateDaysSpinner(spinner: Spinner, monthIndex: Int?, year: Int?) {
         val days = mutableListOf("DD")
-        var daysInMonth:Int = 31
 
-        if (monthIndex != null && year != null && monthIndex > 0) {
-            val month = monthIndex
-            daysInMonth = when (month) {
-                2 -> if (year % 4 == 0) 29 else 28
-                4, 6, 9, 11 -> 30
-                else -> 31
-            }
+        // Convert spinner index to real month number
+        val realMonth = if (monthIndex != null && monthIndex > 0) monthIndex else 1
+
+        val daysInMonth = when (realMonth) {
+            2 -> if (year != null && year % 4 == 0) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
         }
+
         days += (1..daysInMonth).map { it.toString() }
+
         spinner.adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_item,
             days
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
+        )
     }
 
 

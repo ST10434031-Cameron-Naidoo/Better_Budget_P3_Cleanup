@@ -60,6 +60,9 @@ dependencies {
     implementation("com.google.firebase:firebase-database:21.0.0")
     // Firebase Storage for storing user pictures
     implementation("com.google.firebase:firebase-storage:21.0.1")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    ksp("com.github.bumptech.glide:compiler:4.16.0")
+
 
 
     // Room
