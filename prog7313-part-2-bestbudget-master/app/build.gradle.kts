@@ -61,6 +61,7 @@ dependencies {
     // Firebase Storage for storing user pictures
     implementation("com.google.firebase:firebase-storage:21.0.1")
 
+
     // Room
     implementation("androidx.room:room-runtime:2.7.1")
     ksp("androidx.room:room-compiler:2.7.1")
