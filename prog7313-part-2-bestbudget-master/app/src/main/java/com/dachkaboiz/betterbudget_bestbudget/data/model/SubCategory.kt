@@ -1,19 +1,13 @@
 package com.dachkaboiz.betterbudget_bestbudget.data.model
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "subcategories",
-    indices = [Index(value = ["parentCategoryID"])],
-    foreignKeys = [ForeignKey(
-        entity = Category::class,
-        parentColumns = ["categoryID"],
-        childColumns = ["parentCategoryID"],
-        onDelete = ForeignKey.CASCADE
-    )]
+    indices = [Index(value = ["parentCategoryID"])]
+    // Category foreign key removed — Category is now in Firebase
 )
 data class SubCategory(
     @PrimaryKey(autoGenerate = true)
