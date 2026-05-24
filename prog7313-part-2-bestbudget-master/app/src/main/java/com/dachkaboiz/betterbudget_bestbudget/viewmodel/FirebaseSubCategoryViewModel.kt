@@ -28,8 +28,7 @@ class FirebaseSubCategoryViewModel : ViewModel() {
                     val list = snap.children.mapNotNull { child ->
                         val sub = child.getValue(SubCategory::class.java)
                         sub?.copy(
-                            firebaseId = child.key!!,
-                            parentFirebaseId = parentFirebaseId
+                            firebaseId = child.key!!  // keep real parentFirebaseId
                         )
                     }.filter { it.parentFirebaseId == parentFirebaseId }
 

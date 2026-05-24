@@ -43,12 +43,33 @@ class CategoryAdapter<T>(
     private val filteredItems: List<T>
         get() = items.filter { item ->
             when (item) {
-                is SubCategory -> parentFirebaseId != "ROOT" &&
-                        item.parentFirebaseId == parentFirebaseId
 
-                else -> true
+                // Raw SubCategory (rare in your current setup)
+                is SubCategory ->
+                    item.parentFirebaseId == parentFirebaseId
+
+                // Triple<Category/SubCategory, Goal?, Expenses>
+                is Triple<*, *, *> -> {
+                    val first = item.first
+                    when (first) {
+                        is SubCategory ->
+                            first.parentFirebaseId == parentFirebaseId
+
+                        is Category ->
+                            parentFirebaseId == "ROOT"
+
+                        else -> false
+                    }
+                }
+
+                // Raw Category (only for primary list)
+                is Category ->
+                    parentFirebaseId == "ROOT"
+
+                else -> false
             }
         }
+
 
 
     override fun getCount(): Int = filteredItems.size

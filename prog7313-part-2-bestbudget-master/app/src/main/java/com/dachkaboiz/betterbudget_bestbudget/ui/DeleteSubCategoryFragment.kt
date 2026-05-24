@@ -97,7 +97,7 @@ class DeleteSubCategoryFragment(
                     Toast.makeText(requireContext(), "Subcategory deleted", Toast.LENGTH_SHORT).show()
                     parentFragmentManager.popBackStack()
                 }
-        
+
 
         btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
     }
