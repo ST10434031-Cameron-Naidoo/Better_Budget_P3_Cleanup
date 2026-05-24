@@ -73,16 +73,16 @@ class DeleteSubCategoryFragment(
         // Confirm delete
         btnConfirm.setOnClickListener {
             // Check if subcategory has expenses
-            userRef.child("expenses")
-                .orderByChild("subCategoryID")
-                .equalTo(subFirebaseId)
-                .get()
-                .addOnSuccessListener { expSnap ->
+//            userRef.child("expenses")
+//                .orderByChild("subCategoryID")
+//                .equalTo(subFirebaseId)
+//                .get()
+//                .addOnSuccessListener { expSnap ->
 
-                    if (expSnap.exists()) {
-                        Toast.makeText(requireContext(), "Cannot delete: this subcategory has expenses.", Toast.LENGTH_LONG).show()
-                        return@addOnSuccessListener
-                    }
+//                    if (expSnap.exists()) {
+//                        Toast.makeText(requireContext(), "Cannot delete: this subcategory has expenses.", Toast.LENGTH_LONG).show()
+//                        return@addOnSuccessListener
+//                    }
 
                     // Delete subcategory
                     userRef.child("subcategories").child(subFirebaseId).removeValue()
@@ -97,7 +97,7 @@ class DeleteSubCategoryFragment(
                     Toast.makeText(requireContext(), "Subcategory deleted", Toast.LENGTH_SHORT).show()
                     parentFragmentManager.popBackStack()
                 }
-        }
+        
 
         btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
     }
