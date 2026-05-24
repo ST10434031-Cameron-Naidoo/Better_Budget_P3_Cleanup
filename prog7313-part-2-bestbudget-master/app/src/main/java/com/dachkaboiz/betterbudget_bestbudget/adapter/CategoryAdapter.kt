@@ -14,7 +14,7 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategoryGoal
 class CategoryAdapter<T>(
     private val context: Activity,
     private var items: List<T>,
-    private val intParentID: Int,
+    private val parentFirebaseId: String,
     private val showBreakdownButton: Boolean = true,
     private val onItemClick: ((T) -> Unit)?,
     private val onEditClick: (T) -> Unit,
@@ -43,11 +43,13 @@ class CategoryAdapter<T>(
     private val filteredItems: List<T>
         get() = items.filter { item ->
             when (item) {
-                is SubCategory -> item.parentCategoryID == intParentID
-                is SubCategoryGoal -> item.categoryID == intParentID
+                is SubCategory -> parentFirebaseId != "ROOT" &&
+                        item.parentFirebaseId == parentFirebaseId
+
                 else -> true
             }
         }
+
 
     override fun getCount(): Int = filteredItems.size
     override fun getItem(position: Int): T = filteredItems[position]

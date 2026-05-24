@@ -16,7 +16,6 @@ import com.dachkaboiz.betterbudget_bestbudget.adapter.ExpenseAdapter
 import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
-import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategory
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.SubCategoryRepository
@@ -41,7 +40,7 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
     private var categoryCache: List<Category>       = emptyList()
-    private var subCategoryCache: List<SubCategory> = emptyList()
+
     private var dateFrom: Long? = null
     private var dateTo: Long?   = null
 
@@ -55,7 +54,7 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         val db  = AppDatabase.getDatabase(requireContext())
         repository            = ExpenseRepository(db.expenseDao())
-        subCategoryRepository = SubCategoryRepository(db.subCategoryDao())
+//        subCategoryRepository = SubCategoryRepository(db.subCategoryDao())
 
         rvExpenses   = view.findViewById(R.id.rvExpenses)
         tvEmptyState = view.findViewById(R.id.tvEmptyState)
@@ -74,11 +73,11 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
                 val cat = categoryCache.find { it.firebaseId == categoryId.toString() }
                 "${cat?.categoryIcon ?: "💰"} ${cat?.categoryName ?: "Category $categoryId"}"
             },
-            subCategoryNameResolver = { subCategoryId ->
-                val sub = subCategoryCache.find { it.subCategoryID == subCategoryId }
-                "${sub?.subCategoryIcon ?: ""} ${sub?.subCategoryName ?: "Subcategory $subCategoryId"}"
-            }
-        )
+//            subCategoryNameResolver = { subCategoryId ->
+//                val sub = subCategoryCache.find { it.subCategoryID == subCategoryId }
+//                "${sub?.subCategoryIcon ?: ""} ${sub?.subCategoryName ?: "Subcategory $subCategoryId"}"
+//            }
+      )
         rvExpenses.layoutManager = LinearLayoutManager(requireContext())
         rvExpenses.adapter = adapter
 
@@ -86,11 +85,11 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
             firebaseCategoryRepository.getCategories(uid) { list ->
                 categoryCache = list
                 lifecycleScope.launch {
-                    subCategoryCache = categoryCache.flatMap {
-                        // TODO: subcategory owner still uses Int parentCategoryID
-                        // pass 0 until they migrate
-                        subCategoryRepository.getSubCategoriesByCategory(0)
-                    }
+//                    subCategoryCache = categoryCache.flatMap {
+//                        // TODO: subcategory owner still uses Int parentCategoryID
+//                        // pass 0 until they migrate
+//                        subCategoryRepository.getSubCategoriesByCategory(0)
+//                    }
                     loadExpenses()
                 }
             }
@@ -130,10 +129,10 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
         firebaseCategoryRepository.getCategories(uid) { list ->
             categoryCache = list
             lifecycleScope.launch {
-                subCategoryCache = categoryCache.flatMap {
-                    // TODO: subcategory owner still uses Int parentCategoryID
-                    subCategoryRepository.getSubCategoriesByCategory(0)
-                }
+//                subCategoryCache = categoryCache.flatMap {
+//                     TODO: subcategory owner still uses Int parentCategoryID
+//                    subCategoryRepository.getSubCategoriesByCategory(0)
+//                }
                 loadExpenses()
             }
         }
@@ -191,10 +190,10 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
         val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
         // TODO: once expense owner migrates, match on firebaseId directly
         val catName = categoryCache.find { it.firebaseId == expense.categoryID.toString() }?.categoryName ?: "Category ${expense.categoryID}"
-        val subName = expense.subCategoryID?.let { subId -> subCategoryCache.find { it.subCategoryID == subId }?.subCategoryName }
+//     val subName = expense.subCategoryID?.let { subId -> subCategoryCache.find { it.subCategoryID == subId }?.subCategoryName }
         val message = buildString {
             append("Category: $catName\n")
-            if (subName != null) append("Subcategory: $subName\n")
+//            if (subName != null) append("Subcategory: $subName\n")
             append("Amount: R %.2f\n".format(expense.expenseAmount))
             append("Date: ${dateFormat.format(Date(expense.expenseDate))}\n")
             if (!expense.expenseDescription.isNullOrBlank()) append("Description: ${expense.expenseDescription}\n")

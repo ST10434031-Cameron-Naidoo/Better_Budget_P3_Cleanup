@@ -23,12 +23,12 @@ import androidx.room.PrimaryKey
         // Expense owner must update categoryID to String firebaseId
         // when they migrate expenses to Firebase
         // TODO: expense owner to fix this reference
-        ForeignKey(
-            entity = SubCategory::class,
-            parentColumns = ["subCategoryID"],
-            childColumns = ["subCategoryID"],
-            onDelete = ForeignKey.RESTRICT
-        )
+//        ForeignKey(
+//            entity = SubCategory::class,
+//            parentColumns = ["subCategoryID"],
+//            childColumns = ["subCategoryID"],
+//            onDelete = ForeignKey.RESTRICT
+//        )
     ]
 )
 data class Expense(

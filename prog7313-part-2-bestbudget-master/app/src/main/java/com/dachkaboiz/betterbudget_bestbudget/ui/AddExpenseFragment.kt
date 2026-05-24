@@ -97,12 +97,12 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
     }
 
     private suspend fun loadSubCategories(categoryId: Int) {
-        subCategoryList = subCategoryRepository.getSubCategoriesByCategory(categoryId)
+//        subCategoryList = subCategoryRepository.getSubCategoriesByCategory(categoryId)
         val names = mutableListOf("None") + subCategoryList.map { it.subCategoryName }
         spinnerSubCategory.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, names)
         spinnerSubCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, v: View?, position: Int, id: Long) {
-                selectedSubCategoryId = if (position == 0) null else subCategoryList[position - 1].subCategoryID
+//                selectedSubCategoryId = if (position == 0) null else subCategoryList[position - 1].subCategoryID
             }
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
@@ -115,7 +115,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
         val db  = AppDatabase.getDatabase(requireContext())
         repository             = ExpenseRepository(db.expenseDao())
         categoryGoalRepository = CategoryGoalRepository(db.categoryGoalDao())
-        subCategoryRepository  = SubCategoryRepository(db.subCategoryDao())
+//        subCategoryRepository  = SubCategoryRepository(db.subCategoryDao())
         editingExpenseId       = arguments?.getInt("expenseId", -1)?.takeIf { it != -1 }
 
         val spinnerCategory = view.findViewById<Spinner>(R.id.spinnerExpenseCategory)
