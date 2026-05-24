@@ -48,7 +48,7 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
         adapter = CategoryAdapter(
             context     = requireActivity(),
             items       = emptyList(),
-            intParentID = -1,
+            parentFirebaseId = "ROOT",
             onItemClick = { item ->
                 val cat = extractCategory(item)
                 cat?.let { swapToFragment(CategoryBreakdownFragment(it.firebaseId)) }

@@ -11,15 +11,15 @@ import androidx.room.PrimaryKey
         Index(value = ["subCategoryID"]),
         Index(value = ["categoryID"])
     ],
-    foreignKeys = [
-        ForeignKey(
-            entity = SubCategory::class,
-            parentColumns = ["subCategoryID"],
-            childColumns = ["subCategoryID"],
-            onDelete = ForeignKey.CASCADE
-        )
-        // Category foreign key removed — Category is now in Firebase
-    ]
+//    foreignKeys = [
+//        ForeignKey(
+//            entity = SubCategory::class,
+//            parentColumns = ["subCategoryID"],
+//            childColumns = ["subCategoryID"],
+//            onDelete = ForeignKey.CASCADE
+//        )
+//        // Category foreign key removed — Category is now in Firebase
+//    ]
 )
 data class SubCategoryGoal(
     @PrimaryKey(autoGenerate = true)

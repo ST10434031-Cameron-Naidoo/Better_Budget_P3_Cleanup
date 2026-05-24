@@ -12,23 +12,20 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.adapter.CategoryAdapter
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategory
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.SubCategoryRepository
 import com.dachkaboiz.betterbudget_bestbudget.viewmodel.CategoryViewModel
-import com.dachkaboiz.betterbudget_bestbudget.viewmodel.SubCategoryViewModel
-import com.dachkaboiz.betterbudget_bestbudget.viewmodel.SubCategoryViewModelFactory
+import com.dachkaboiz.betterbudget_bestbudget.viewmodel.FirebaseSubCategoryViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class CategoryBreakdownFragment(
-    val parentCategoryId: String  // was: parentCategoryID: Int
+    val parentCategoryId: String  // Firebase category ID
 ) : Fragment(R.layout.fragment_category_breakdown_v2) {
 
     private lateinit var catViewModel: CategoryViewModel
-    private lateinit var subCatViewModel: SubCategoryViewModel
+    private lateinit var subCatViewModel: FirebaseSubCategoryViewModel
 
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
@@ -51,21 +48,15 @@ class CategoryBreakdownFragment(
         val lvSub        = view.findViewById<ListView>(R.id.lvCategories)
         val btnAddSub    = view.findViewById<Button>(R.id.btnAddSubCategory)
 
-        val db     = AppDatabase.getDatabase(requireContext())
-        val subDao = db.subCategoryDao()
-
         // ViewModels
         catViewModel = ViewModelProvider(this)[CategoryViewModel::class.java]
-        subCatViewModel = ViewModelProvider(
-            this,
-            SubCategoryViewModelFactory(SubCategoryRepository(subDao))
-        )[SubCategoryViewModel::class.java]
+        subCatViewModel = ViewModelProvider(this)[FirebaseSubCategoryViewModel::class.java]
 
         // PRIMARY CATEGORY ADAPTER
         val primaryAdapter = CategoryAdapter<Any>(
             context           = requireActivity(),
             items             = emptyList(),
-            intParentID       = -1,
+            parentFirebaseId       = "ROOT",
             showBreakdownButton = false,
             onItemClick       = null,
             onEditClick       = { item ->
@@ -79,29 +70,41 @@ class CategoryBreakdownFragment(
         )
         lvPrimary.adapter = primaryAdapter
 
-        // SUBCATEGORY ADAPTER — still uses Room for now
+        // SUBCATEGORY ADAPTER — now Firebase
         val subAdapter = CategoryAdapter<Any>(
             context           = requireActivity(),
             items             = emptyList(),
-            intParentID       = -1,
+            parentFirebaseId       = parentCategoryId  ,
             showBreakdownButton = false,
             onItemClick       = null,
             onEditClick       = { item ->
                 val sub = extractSubCategory(item)
-                // TODO: update when SubCategory migrates to Firebase
-                sub?.let { swapToFragment(UpdateSubCategoryFragment(0, it.subCategoryID)) }
+                sub?.let {
+                    swapToFragment(
+                        UpdateSubCategoryFragment(
+                             it.parentFirebaseId,
+                             it.firebaseId
+                        )
+                    )
+                }
             },
             onDeleteClick     = { item ->
                 val sub = extractSubCategory(item)
-                // TODO: update when SubCategory migrates to Firebase
-                sub?.let { swapToFragment(DeleteSubCategoryFragment(0, it.subCategoryID)) }
+                sub?.let {
+                    swapToFragment(
+                        DeleteSubCategoryFragment(
+                             it.parentFirebaseId,
+                             it.firebaseId
+                        )
+                    )
+                }
             }
         )
         lvSub.adapter = subAdapter
 
+        // ADD SUBCATEGORY — now using Firebase ID
         btnAddSub.setOnClickListener {
-            // TODO: update parentID when SubCategory migrates to Firebase
-            swapToFragment(AddSubCategoryFragment(parentID = 0))
+            swapToFragment(AddSubCategoryFragment(parentCategoryId))
         }
 
         // Load primary category
@@ -113,17 +116,18 @@ class CategoryBreakdownFragment(
         viewLifecycleOwner.lifecycleScope.launch {
             catViewModel.category.collect { cat ->
                 if (cat != null) {
-                    // TODO: wire goal after CategoryGoal migration
-                    // TODO: wire expenses after expense migration
                     val combined = listOf(Triple(cat, null, emptyList<Any>()))
                     primaryAdapter.updateItems(combined)
                 }
             }
         }
 
-        // Subcategories — still Room
-        // TODO: migrate to Firebase when SubCategory migration is done
-        subCatViewModel.loadSubCategories(0)
+        // Load subcategories from Firebase
+        if (uid != null) {
+            subCatViewModel.loadSubCategories( parentCategoryId)
+        }
+
+        // Observe Firebase subcategories
         viewLifecycleOwner.lifecycleScope.launch {
             subCatViewModel.subCategories.collect { list ->
                 val combined = list.map { sub ->
