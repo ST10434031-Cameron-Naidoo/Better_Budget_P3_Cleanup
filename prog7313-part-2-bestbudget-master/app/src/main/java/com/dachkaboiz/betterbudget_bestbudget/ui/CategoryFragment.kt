@@ -1,145 +1,87 @@
 package com.dachkaboiz.betterbudget_bestbudget.ui
 
-import android.R.attr.category
 import android.app.DatePickerDialog
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.View
 import android.widget.Button
-import android.widget.DatePicker
 import android.widget.ListView
 import android.widget.RadioGroup
 import android.widget.TextView
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.room.InvalidationTracker
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.CategoryRepository
-import com.dachkaboiz.betterbudget_bestbudget.viewmodel.CategoryViewModel
-import com.dachkaboiz.betterbudget_bestbudget.viewmodel.CategoryViewModelFactory
 import com.dachkaboiz.betterbudget_bestbudget.adapter.CategoryAdapter
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase.Companion.getDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
-import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
-import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
+import com.dachkaboiz.betterbudget_bestbudget.viewmodel.CategoryViewModel
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import kotlin.collections.emptyList
 
 class CategoryFragment : Fragment(R.layout.fragment_category) {
 
     private lateinit var viewModel: CategoryViewModel
     private lateinit var adapter: CategoryAdapter<Any>
-    private var categoryGoal: CategoryGoal? = null
-
-    private lateinit var expRepository: ExpenseRepository
-
 
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val db = AppDatabase.getDatabase(requireContext())
-        expRepository = ExpenseRepository(db.expenseDao())
-        //Bind Views
-        val rgSortOrder: RadioGroup = view.findViewById(R.id.rgFullCategorySort)
-        val dpStart: TextView = view.findViewById(R.id.dpFullCategoryStartDate)
-        val dpFinish: TextView = view.findViewById(R.id.dpFullCategoryEndDate)
-        // 1. Setup ViewModel
-        val dao = getDatabase(requireContext()).categoryDao()
-        val repo = CategoryRepository(dao)
-        val factory = CategoryViewModelFactory(repo)
-        viewModel = ViewModelProvider(this, factory)[CategoryViewModel::class.java]
-        val btnAddCategory = view.findViewById<Button>(R.id.btnAddFullCategory)
-        btnAddCategory.setOnClickListener {
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+
+        val rgSortOrder = view.findViewById<RadioGroup>(R.id.rgFullCategorySort)
+        val dpStart     = view.findViewById<TextView>(R.id.dpFullCategoryStartDate)
+        val dpFinish    = view.findViewById<TextView>(R.id.dpFullCategoryEndDate)
+        val listView    = view.findViewById<ListView>(R.id.lvFullCategories)
+        val btnAdd      = view.findViewById<Button>(R.id.btnAddFullCategory)
+
+        // ViewModel — no factory needed anymore
+        viewModel = ViewModelProvider(this)[CategoryViewModel::class.java]
+
+        btnAdd.setOnClickListener {
             swapToFragment(AddCategoryFragment())
         }
 
-        // 2. Get email from MainActivity
-        val prefs = requireActivity().getSharedPreferences("auth", 0)
-        val email = prefs.getString("email", null)
-
-        // Re-sort whenever the user changes the sort radio buttons
-        rgSortOrder.setOnCheckedChangeListener { _, _ -> observeCategories() }
-
-        // 3. Setup ListView + empty adapter
-        val listView = view.findViewById<ListView>(R.id.lvFullCategories)
-
-
-
-        adapter = CategoryAdapter<Any>(
-            context = requireActivity(),
-            items = emptyList(),
+        // Adapter setup
+        adapter = CategoryAdapter(
+            context     = requireActivity(),
+            items       = emptyList(),
             intParentID = -1,
             onItemClick = { item ->
-                when (item) {
-                    is Category -> swapToFragment(CategoryBreakdownFragment(item.categoryID))
-                    is Triple<*, *,*> -> {
-                        val cat = item.first as? Category
-                        if (cat != null) {
-                            swapToFragment(CategoryBreakdownFragment(cat.categoryID))
-                        }
-                    }
-                }
+                val cat = extractCategory(item)
+                cat?.let { swapToFragment(CategoryBreakdownFragment(it.firebaseId)) }
             },
             onEditClick = { item ->
-                when (item) {
-                    is Category -> swapToFragment(UpdateCategoryFragment(item.categoryID))
-                    is Triple<*, *,*> -> {
-                        val cat = item.first as? Category
-                        if (cat != null) {
-                            swapToFragment(UpdateCategoryFragment(cat.categoryID))
-                        }
-                    }
-                }
+                val cat = extractCategory(item)
+                cat?.let { swapToFragment(UpdateCategoryFragment(it.firebaseId)) }
             },
             onDeleteClick = { item ->
-                when (item) {
-                    is Category -> swapToFragment(DeleteCategoryFragment(item.categoryID))
-                    is Triple<*, *,*> -> {
-                        val cat = item.first as? Category
-                        if (cat != null) {
-                            swapToFragment(DeleteCategoryFragment(cat.categoryID))
-                        }
-                    }
-                }
+                val cat = extractCategory(item)
+                cat?.let { swapToFragment(DeleteCategoryFragment(it.firebaseId)) }
             }
         )
+        listView.adapter = adapter
 
+        // Load categories
+        if (uid != null) {
+            viewModel.loadCategories(uid)
+        }
 
-                    listView.adapter = adapter
-
-        // 4. Load categories
-        if (email != null) {
-            viewModel.loadCategories(email)
-
-            val goalDao = getDatabase(requireContext()).categoryGoalDao()
-            val expenseDao= AppDatabase.getDatabase(requireContext()).expenseDao()
-
-            viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.categories.collect { categoryList ->
-
-                    val combined = categoryList.map { cat ->
-                        val goal = goalDao.getGoalsByCategory(cat.categoryID)
-                        val expenses: List<Expense> = expenseDao.getExpensesByCategory(cat.categoryID) ?: emptyList()
-
-                        Triple(cat, goal, expenses)
-                    }
-
-
-                    adapter.updateItems(combined as List<Any>)
-                }
+        // Observe and display
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.categories.collect { categoryList ->
+                buildAndDisplayList(categoryList, rgSortOrder)
             }
         }
 
+        // Sort changes
+        rgSortOrder.setOnCheckedChangeListener { _, _ ->
+            buildAndDisplayList(viewModel.categories.value, rgSortOrder)
+        }
 
-        // 5. Observe categories
-        observeCategories()
-        // FROM date picker — tap the label to pick a start date
+        // Date pickers
         dpStart.setOnClickListener {
             showDatePicker { year, month, day ->
                 val cal = Calendar.getInstance()
@@ -147,11 +89,10 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
                 cal.set(Calendar.MILLISECOND, 0)
                 dateFrom = cal.timeInMillis
                 dpStart.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
-                observeCategories()
+                buildAndDisplayList(viewModel.categories.value, rgSortOrder)
             }
         }
 
-        // TO date picker — tap the label to pick an end date
         dpFinish.setOnClickListener {
             showDatePicker { year, month, day ->
                 val cal = Calendar.getInstance()
@@ -159,49 +100,43 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
                 cal.set(Calendar.MILLISECOND, 999)
                 dateTo = cal.timeInMillis
                 dpFinish.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
-                observeCategories()
+                buildAndDisplayList(viewModel.categories.value, rgSortOrder)
             }
         }
-
-
-
     }
 
-    private fun observeCategories() {
-        val rgSortOrder = requireView().findViewById<RadioGroup>(R.id.rgFullCategorySort)
+    override fun onResume() {
+        super.onResume()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        uid?.let { viewModel.loadCategories(it) }
+    }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.categories.collect { categoryList ->
+    private fun buildAndDisplayList(
+        categoryList: List<Category>,
+        rgSortOrder: RadioGroup
+    ) {
+        // Build Triples — expenses and goals are null for now
+        // TODO: wire expenses after expense migration
+        // TODO: wire goals after CategoryGoal migration
+        val combined = categoryList.map { cat ->
+            Triple(cat, null, emptyList<Any>())
+        }
 
-                val db = AppDatabase.getDatabase(requireContext())
-                val goalDao = db.categoryGoalDao()
-                val expenseDao = db.expenseDao()
+        // Sort
+        val sorted = when (rgSortOrder.checkedRadioButtonId) {
+            R.id.rbFullCategoryFirstAdded -> combined.sortedBy { it.first.firebaseId }
+            R.id.rbFullCategoryLastAdded  -> combined.sortedByDescending { it.first.firebaseId }
+            else                          -> combined.sortedBy { it.first.categoryName }
+        }
 
-                // Build combined list
-                val combined = categoryList.map { cat ->
+        adapter.updateItems(sorted)
+    }
 
-                    val goal = goalDao.getGoalsByCategory(cat.categoryID)
-                    val expenses = expenseDao.getExpensesByCategory(cat.categoryID) ?: emptyList()
-
-                    // Apply date filters
-                    val filteredExpenses = expenses.filter { exp ->
-                        val fromOk = dateFrom?.let { exp.expenseDate >= it } ?: true
-                        val toOk   = dateTo?.let { exp.expenseDate <= it } ?: true
-                        fromOk && toOk
-                    }
-
-                    Triple(cat, goal, filteredExpenses)
-                }
-
-                // Sorting
-                val sorted = when (rgSortOrder.checkedRadioButtonId) {
-                    R.id.rbFullCategoryFirstAdded -> combined.sortedBy { it.first.categoryID }
-                    R.id.rbFullCategoryLastAdded  -> combined.sortedByDescending { it.first.categoryID }
-                    else                  -> combined.sortedBy { it.first.categoryName }
-                }
-
-                adapter.updateItems(sorted)
-            }
+    private fun extractCategory(item: Any): Category? {
+        return when (item) {
+            is Category -> item
+            is Triple<*, *, *> -> item.first as? Category
+            else -> null
         }
     }
 
@@ -223,5 +158,3 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
             .commit()
     }
 }
-
-
