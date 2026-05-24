@@ -10,40 +10,51 @@ import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class DeleteGoalFragment : Fragment(R.layout.fragment_delete_goal) {
 
     private var targetGoal: CategoryGoal? = null
+    private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val db = AppDatabase.getDatabase(requireContext())
+        val db     = AppDatabase.getDatabase(requireContext())
+        val uid    = FirebaseAuth.getInstance().currentUser?.uid
         val goalId = arguments?.getInt("goalID") ?: -1
 
-        // UI References
         val tvCategory = view.findViewById<TextView>(R.id.tvDeleteGoalCategory)
-        val tvMax = view.findViewById<TextView>(R.id.tvDeleteGoalMax)
-        val tvMin = view.findViewById<TextView>(R.id.tvDeleteGoalMin)
-        val tvPeriod = view.findViewById<TextView>(R.id.tvDeleteGoalPeriod)
+        val tvMax      = view.findViewById<TextView>(R.id.tvDeleteGoalMax)
+        val tvMin      = view.findViewById<TextView>(R.id.tvDeleteGoalMin)
+        val tvPeriod   = view.findViewById<TextView>(R.id.tvDeleteGoalPeriod)
         val btnConfirm = view.findViewById<Button>(R.id.btnDeleteGoalConfirm)
-        val btnCancel = view.findViewById<Button>(R.id.btnDeleteGoalCancel)
+        val btnCancel  = view.findViewById<Button>(R.id.btnDeleteGoalCancel)
 
-        // 1. Load Goal details for the summary card
         lifecycleScope.launch {
             targetGoal = db.categoryGoalDao().getGoalById(goalId)
             targetGoal?.let { goal ->
-                val category = db.categoryDao().getCategoryById(goal.categoryID)
-
-                tvCategory.text = category?.categoryName ?: "Unknown Category"
-                tvMax.text = "Limit: R${String.format("%.2f", goal.maxGoal ?: 0.0)}"
-                tvMin.text = "Min Target: R${String.format("%.2f", goal.minGoal ?: 0.0)}"
+                tvMax.text    = "Limit: R${String.format("%.2f", goal.maxGoal ?: 0.0)}"
+                tvMin.text    = "Min Target: R${String.format("%.2f", goal.minGoal ?: 0.0)}"
                 tvPeriod.text = "Period: ${goal.month} - ${goal.year}"
+
+                if (uid != null) {
+                    firebaseCategoryRepository.getCategories(uid) { list ->
+                        val category = list.firstOrNull {
+                            it.firebaseId == goal.categoryID.toString()
+                        }
+                        requireActivity().runOnUiThread {
+                            tvCategory.text = category?.categoryName ?: "Unknown Category"
+                        }
+                    }
+                } else {
+                    tvCategory.text = "Unknown Category"
+                }
             }
         }
 
-        // 2. Delete Confirmation
         btnConfirm.setOnClickListener {
             targetGoal?.let { goal ->
                 lifecycleScope.launch {
@@ -54,7 +65,6 @@ class DeleteGoalFragment : Fragment(R.layout.fragment_delete_goal) {
             }
         }
 
-        // 3. Cancel
         btnCancel.setOnClickListener {
             parentFragmentManager.popBackStack()
         }

@@ -12,59 +12,56 @@ import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategory
 import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class UpdateSubCategoryFragment (
+class UpdateSubCategoryFragment(
     private val parentID: Int,
     private val subID: Int
 ) : Fragment(R.layout.fragment_edit_subcategory) {
+
     private var currentSubCategory: SubCategory? = null
     private var currentGoal: SubCategoryGoal? = null
+    private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val db = AppDatabase.getDatabase(requireContext())
-        val primaryName: TextView = view.findViewById(R.id.tvEditParentCategory)
+        val db  = AppDatabase.getDatabase(requireContext())
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
 
-        val etName = view.findViewById<EditText>(R.id.etEditSubcategoryName)
-        val etIcon = view.findViewById<EditText>(R.id.etEditSubCategoryIcon)
-        val etDescription = view.findViewById<EditText>(R.id.etEditSubDescription)
-        val etMinGoal = view.findViewById<EditText>(R.id.etEditSubMinGoal)
-        val etMaxGoal = view.findViewById<EditText>(R.id.etEditSubMaxGoal)
-        val btnUpdate = view.findViewById<Button>(R.id.btnEditSubUpdate)
-        val btnCancel = view.findViewById<Button>(R.id.btnEditSubCancel)
+        val primaryName  = view.findViewById<TextView>(R.id.tvEditParentCategory)
+        val etName       = view.findViewById<EditText>(R.id.etEditSubcategoryName)
+        val etIcon       = view.findViewById<EditText>(R.id.etEditSubCategoryIcon)
+        val etDescription= view.findViewById<EditText>(R.id.etEditSubDescription)
+        val etMinGoal    = view.findViewById<EditText>(R.id.etEditSubMinGoal)
+        val etMaxGoal    = view.findViewById<EditText>(R.id.etEditSubMaxGoal)
+        val btnUpdate    = view.findViewById<Button>(R.id.btnEditSubUpdate)
+        val btnCancel    = view.findViewById<Button>(R.id.btnEditSubCancel)
 
-        // Code Attribution
-        // The use of lifecycleScope.launch for running coroutines in a Fragment
-        // was referenced from Stack Overflow
-        // https://stackoverflow.com/questions/54827455/how-to-implement-coroutines-with-room-database
-        // Ravi Kumar
-        // https://stackoverflow.com/users/9581883/ravi-kumar
+        // Load parent category name from Firebase
+        if (uid != null) {
+            firebaseCategoryRepository.getCategoryById(uid, parentID.toString()) { cat ->
+                requireActivity().runOnUiThread {
+                    primaryName.setText(cat?.categoryName ?: "")
+                }
+            }
+        }
+
         lifecycleScope.launch {
             currentSubCategory = db.subCategoryDao().getSubCategoryById(subID)
-            val currentCategory = db.categoryDao().getCategoryById(parentID)
-
-            // Code Attribution
-            // This method of retrieving the current month and year using Calendar.getInstance()
-            // was referenced from W3Schools
-            // https://www.w3schools.com/java/java_date.asp
             val calendar = Calendar.getInstance()
-            val month = calendar.get(Calendar.MONTH) + 1
-            val year = calendar.get(Calendar.YEAR)
-            currentGoal = db.subCategoryGoalDao().getGoalBySubCategoryAndMonth(subID, month, year)
-
-            currentCategory?.let { cat ->
-                primaryName.setText(cat.categoryName)
-            }
+            val month    = calendar.get(Calendar.MONTH) + 1
+            val year     = calendar.get(Calendar.YEAR)
+            currentGoal  = db.subCategoryGoalDao().getGoalBySubCategoryAndMonth(subID, month, year)
 
             currentSubCategory?.let { sub ->
                 etName.setText(sub.subCategoryName)
                 etIcon.setText(sub.subCategoryIcon)
                 etDescription.setText(sub.subCategoryDescription ?: "")
             }
-
             currentGoal?.let { goal ->
                 etMinGoal.setText(goal.minGoal?.toString() ?: "")
                 etMaxGoal.setText(goal.maxGoal?.toString() ?: "")
@@ -72,88 +69,60 @@ class UpdateSubCategoryFragment (
         }
 
         btnUpdate.setOnClickListener {
-            val name = etName.text.toString().trim()
-            val icon = etIcon.text.toString().trim()
+            val name        = etName.text.toString().trim()
+            val icon        = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
+            val minGoal     = etMinGoal.text.toString().toDoubleOrNull()
+            val maxGoal     = etMaxGoal.text.toString().toDoubleOrNull()
 
-            val minGoal = etMinGoal.text.toString().toDoubleOrNull()
-            val maxGoal = etMaxGoal.text.toString().toDoubleOrNull()
-
-            if (name.isEmpty()) {
-                etName.error = "Name is required"
-                return@setOnClickListener
-            }
-
-            if (icon.isBlank()) {
-                etIcon.error = "Icon is required"
-                return@setOnClickListener
-            }
+            if (name.isEmpty()) { etName.error = "Name is required"; return@setOnClickListener }
+            if (icon.isBlank()) { etIcon.error = "Icon is required"; return@setOnClickListener }
 
             lifecycleScope.launch {
-
-                // Code Attribution
-                // This method of retrieving the current month and year using Calendar.getInstance()
-                // was referenced from W3Schools
-                // https://www.w3schools.com/java/java_date.asp
-                val calendar = Calendar.getInstance()
-                val month = calendar.get(Calendar.MONTH) + 1
-                val year = calendar.get(Calendar.YEAR)
-
-                val catGoal = db.categoryGoalDao().getGoalByCategoryAndMonth(parentID, month, year)
-                val subCatGoals = db.subCategoryGoalDao().getGoalsByCategoryAndMonth(parentID, month, year)
-
-                val filteredSubGoals = subCatGoals.filter { it.subCategoryID != subID }
-
+                val calendar        = Calendar.getInstance()
+                val month           = calendar.get(Calendar.MONTH) + 1
+                val year            = calendar.get(Calendar.YEAR)
+                val catGoal         = db.categoryGoalDao().getGoalByCategoryAndMonth(parentID, month, year)
+                val subCatGoals     = db.subCategoryGoalDao().getGoalsByCategoryAndMonth(parentID, month, year)
+                val filteredSubGoals= subCatGoals.filter { it.subCategoryID != subID }
                 val totalMinSubGoal = filteredSubGoals.sumOf { it.minGoal ?: 0.0 }
                 val totalMaxSubGoal = filteredSubGoals.sumOf { it.maxGoal ?: 0.0 }
-
-                val catMinGoal = catGoal?.minGoal ?: 0.0
-                val catMaxGoal = catGoal?.maxGoal ?: 0.0
-
-                val safeMinGoal = minGoal ?: 0.0
-                val safeMaxGoal = maxGoal ?: 0.0
+                val catMinGoal      = catGoal?.minGoal ?: 0.0
+                val catMaxGoal      = catGoal?.maxGoal ?: 0.0
+                val safeMinGoal     = minGoal ?: 0.0
+                val safeMaxGoal     = maxGoal ?: 0.0
 
                 val goalsValid =
                     (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
                             (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
 
                 if (!goalsValid) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Min or max goal total exceeds category goal",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(requireContext(), "Min or max goal total exceeds category goal", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 currentSubCategory?.let { sub ->
-                    val updatedSub = sub.copy(
-                        subCategoryName = name,
-                        subCategoryIcon = icon,
-                        subCategoryDescription = description
+                    db.subCategoryDao().updateSubCategory(
+                        sub.copy(subCategoryName = name, subCategoryIcon = icon, subCategoryDescription = description)
                     )
-                    db.subCategoryDao().updateSubCategory(updatedSub)
                 }
 
                 val cal = Calendar.getInstance()
-
                 if (currentGoal != null) {
-                    val updatedGoal = currentGoal!!.copy(
-                        minGoal = minGoal,
-                        maxGoal = maxGoal
+                    db.subCategoryGoalDao().updateSubCategoryGoal(
+                        currentGoal!!.copy(minGoal = minGoal, maxGoal = maxGoal)
                     )
-                    db.subCategoryGoalDao().updateSubCategoryGoal(updatedGoal)
-
                 } else if (minGoal != null || maxGoal != null) {
-                    val newGoal = SubCategoryGoal(
-                        subCategoryID = subID,
-                        categoryID = parentID,
-                        minGoal = minGoal,
-                        maxGoal = maxGoal,
-                        month = cal.get(Calendar.MONTH) + 1,
-                        year = cal.get(Calendar.YEAR)
+                    db.subCategoryGoalDao().insertSubCategoryGoal(
+                        SubCategoryGoal(
+                            subCategoryID = subID,
+                            categoryID    = parentID,
+                            minGoal       = minGoal,
+                            maxGoal       = maxGoal,
+                            month         = cal.get(Calendar.MONTH) + 1,
+                            year          = cal.get(Calendar.YEAR)
+                        )
                     )
-                    db.subCategoryGoalDao().insertSubCategoryGoal(newGoal)
                 }
 
                 Toast.makeText(requireContext(), "Subcategory updated!", Toast.LENGTH_SHORT).show()
@@ -161,8 +130,6 @@ class UpdateSubCategoryFragment (
             }
         }
 
-        btnCancel.setOnClickListener {
-            parentFragmentManager.popBackStack()
-        }
+        btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
     }
 }

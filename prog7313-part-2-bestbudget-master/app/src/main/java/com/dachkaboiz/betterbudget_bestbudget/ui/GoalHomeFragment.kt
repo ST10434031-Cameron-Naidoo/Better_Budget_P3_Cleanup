@@ -1,21 +1,23 @@
 package com.dachkaboiz.betterbudget_bestbudget.ui
 
+import android.app.DatePickerDialog
 import android.os.Bundle
 import android.view.View
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.adapter.GoalAdapter
+import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.app.DatePickerDialog
-import android.widget.RadioGroup
-
+import java.util.concurrent.CountDownLatch
 
 class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
@@ -23,37 +25,32 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
     private lateinit var rvGoals: RecyclerView
     private lateinit var tvNoGoals: TextView
     private lateinit var rgSort: RadioGroup
-
-    // Date filter variables
     private lateinit var tvDateFrom: TextView
     private lateinit var tvDateTo: TextView
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
+    private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        rvGoals = view.findViewById(R.id.rvGoalsList)
-        tvNoGoals = view.findViewById(R.id.tvNoGoals)
-        val btnAdd = view.findViewById<MaterialButton>(R.id.btnAddNewGoal)
+        rvGoals    = view.findViewById(R.id.rvGoalsList)
+        tvNoGoals  = view.findViewById(R.id.tvNoGoals)
         tvDateFrom = view.findViewById(R.id.tvDateFrom)
-        tvDateTo = view.findViewById(R.id.tvDateTo)
-        rgSort = view.findViewById(R.id.rgSortHome)
+        tvDateTo   = view.findViewById(R.id.tvDateTo)
+        rgSort     = view.findViewById(R.id.rgSortHome)
+        val btnAdd = view.findViewById<MaterialButton>(R.id.btnAddNewGoal)
 
-
-
-        // Initialize Adapter with Triple data and navigation logic
         adapter = GoalAdapter(
-            items = emptyList(),
-            onCardClick = { categoryId -> navigateToBreakdown(categoryId) },
-            onEditClick = { goalId -> navigateToUpdate(goalId) },
+            items         = emptyList(),
+            onCardClick   = { firebaseId -> navigateToBreakdown(firebaseId) },
+            onEditClick   = { goalId -> navigateToUpdate(goalId) },
             onDeleteClick = { goalId -> navigateToDelete(goalId) }
         )
 
         rvGoals.layoutManager = LinearLayoutManager(requireContext())
         rvGoals.adapter = adapter
 
-        // Setup Date Pickers
         tvDateFrom.setOnClickListener {
             showDatePicker { year, month, day ->
                 val cal = Calendar.getInstance().apply {
@@ -78,83 +75,75 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
             }
         }
 
-        // Trigger reload when sorting changes
         rgSort.setOnCheckedChangeListener { _, _ -> loadGoals() }
-
-        //  Load Data
         loadGoals()
 
-        //  Add Goal Navigation
         btnAdd.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.mainFragment, AddGoalFragment())
                 .addToBackStack(null)
                 .commit()
         }
-
-
     }
 
     private fun loadGoals() {
-        val db = AppDatabase.getDatabase(requireContext())
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db  = AppDatabase.getDatabase(requireContext())
+
         lifecycleScope.launch {
-            // 1. Fetching all goals using the Dao method we added
             val allGoals = db.categoryGoalDao().getAllGoals()
 
             val displayList = allGoals.mapNotNull { goal ->
-                val category = db.categoryDao().getCategoryById(goal.categoryID)
+                var category: com.dachkaboiz.betterbudget_bestbudget.data.model.Category? = null
+                val latch = CountDownLatch(1)
+                firebaseCategoryRepository.getCategories(uid) { list ->
+                    category = list.firstOrNull { it.firebaseId == goal.categoryID.toString() }
+                    latch.countDown()
+                }
+                latch.await()
 
-                // 2. Date Filtering using Month and Year from Goal Dao instead of goalDate
-                // We convert the selected dateFrom/dateTo back to month/year for comparison
                 val calFrom = dateFrom?.let { Calendar.getInstance().apply { timeInMillis = it } }
-                val calTo = dateTo?.let { Calendar.getInstance().apply { timeInMillis = it } }
-
-                val goalMonth = goal.month // From Dao
-                val goalYear = goal.year   // From Dao
+                val calTo   = dateTo?.let { Calendar.getInstance().apply { timeInMillis = it } }
+                val goalMonth = goal.month
+                val goalYear  = goal.year
 
                 val isAfterStart = calFrom?.let {
                     val startMonth = it.get(Calendar.MONTH) + 1
-                    val startYear = it.get(Calendar.YEAR)
+                    val startYear  = it.get(Calendar.YEAR)
                     (goalYear > startYear) || (goalYear == startYear && goalMonth >= startMonth)
                 } ?: true
 
                 val isBeforeEnd = calTo?.let {
                     val endMonth = it.get(Calendar.MONTH) + 1
-                    val endYear = it.get(Calendar.YEAR)
+                    val endYear  = it.get(Calendar.YEAR)
                     (goalYear < endYear) || (goalYear == endYear && goalMonth <= endMonth)
                 } ?: true
 
-                if (category != null && isAfterStart && isBeforeEnd) {
-                    // Fetch expenses for progress tracking
-                    val expenses = db.expenseDao().getExpensesByCategory(goal.categoryID) ?: emptyList()
-
-                    // Expense filtering still uses expenseDate for precision
+                if (isAfterStart && isBeforeEnd) {
+                    val expenses = db.expenseDao()
+                        .getExpensesByCategory(goal.categoryID) ?: emptyList()
                     val filteredExpenses = expenses.filter { exp ->
                         val fromOk = dateFrom?.let { exp.expenseDate >= it } ?: true
-                        val toOk = dateTo?.let { exp.expenseDate <= it } ?: true
+                        val toOk   = dateTo?.let { exp.expenseDate <= it } ?: true
                         fromOk && toOk
                     }
-
                     val totalSpent = filteredExpenses.sumOf { it.expenseAmount }
                     Triple(goal, category, totalSpent)
                 } else null
             }
 
-            // 3. Sorting logic using ID (Since ID increments as they are added)
             val sortedList = when (rgSort.checkedRadioButtonId) {
-                // Sort by ID is a safe proxy for "Date Added" without using a date field
-                R.id.rbSortLastAdded -> displayList.sortedByDescending { it.first.categoryGoalID }
+                R.id.rbSortLastAdded  -> displayList.sortedByDescending { it.first.categoryGoalID }
                 R.id.rbSortFirstAdded -> displayList.sortedBy { it.first.categoryGoalID }
-                else -> displayList.sortedBy { it.second.categoryName }
+                else                  -> displayList.sortedBy { it.second?.categoryName ?: "" }
             }
 
-            // 4. Update UI
             if (sortedList.isEmpty()) {
                 tvNoGoals.visibility = View.VISIBLE
-                rvGoals.visibility = View.GONE
+                rvGoals.visibility   = View.GONE
             } else {
                 tvNoGoals.visibility = View.GONE
-                rvGoals.visibility = View.VISIBLE
+                rvGoals.visibility   = View.VISIBLE
                 adapter.updateData(sortedList)
             }
         }
@@ -162,15 +151,17 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
     private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
         val calendar = Calendar.getInstance()
-        DatePickerDialog(requireContext(), { _, year, month, day ->
-            onDateSelected(year, month, day)
-        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+        DatePickerDialog(
+            requireContext(),
+            { _, year, month, day -> onDateSelected(year, month, day) },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
     }
 
-    private fun navigateToBreakdown(categoryId: Int) {
-        // Pass the categoryId directly into the constructor as the original code requires
-        val fragment = CategoryBreakdownFragment(categoryId)
-
+    private fun navigateToBreakdown(firebaseId: String) {
+        val fragment = CategoryBreakdownFragment(firebaseId)
         parentFragmentManager.beginTransaction()
             .replace(R.id.mainFragment, fragment)
             .addToBackStack(null)
@@ -199,6 +190,6 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
     override fun onResume() {
         super.onResume()
-        loadGoals() // Refresh when coming back from Update/Delete
+        loadGoals()
     }
 }
