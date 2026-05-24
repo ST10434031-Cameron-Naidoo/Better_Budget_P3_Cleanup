@@ -10,6 +10,7 @@ import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import java.util.Calendar
 
 class DeleteSubCategoryFragment(
     private val parentFirebaseId: String,
@@ -33,7 +34,7 @@ class DeleteSubCategoryFragment(
         val btnConfirm    = view.findViewById<Button>(R.id.btnDeleteSubConfirm)
         val btnCancel     = view.findViewById<Button>(R.id.btnDeleteSubCancel)
 
-        // 1️⃣ Load subcategory
+        // Load subcategory
         userRef.child("subcategories").child(subFirebaseId)
             .get()
             .addOnSuccessListener { snap ->
@@ -44,7 +45,7 @@ class DeleteSubCategoryFragment(
                 tvDescription.text = "Description: ${sub?.subCategoryDescription ?: "—"}"
             }
 
-        // 2️⃣ Load parent category name
+        // Load parent category name
         userRef.child("categories").child(parentFirebaseId)
             .get()
             .addOnSuccessListener { snap ->
@@ -52,9 +53,9 @@ class DeleteSubCategoryFragment(
                 tvParent.text = "Parent Category: $name"
             }
 
-        // 3️⃣ Load subcategory goal
-        val cal = java.util.Calendar.getInstance()
-        val monthKey = "${cal.get(java.util.Calendar.YEAR)}-${cal.get(java.util.Calendar.MONTH) + 1}"
+        // Load subcategory goal
+        val cal = Calendar.getInstance()
+        val monthKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH) + 1}"
 
         userRef.child("subCategoryGoals")
             .child(parentFirebaseId)
@@ -69,11 +70,11 @@ class DeleteSubCategoryFragment(
                 tvMaxGoal.text = "Max Goal: ${max?.let { "R $it" } ?: "—"}"
             }
 
-        // 4️⃣ Confirm delete
+        // Confirm delete
         btnConfirm.setOnClickListener {
-            // First check if subcategory has expenses
+            // Check if subcategory has expenses
             userRef.child("expenses")
-                .orderByChild("subCategoryId")
+                .orderByChild("subCategoryID")
                 .equalTo(subFirebaseId)
                 .get()
                 .addOnSuccessListener { expSnap ->
@@ -101,3 +102,4 @@ class DeleteSubCategoryFragment(
         btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
     }
 }
+
