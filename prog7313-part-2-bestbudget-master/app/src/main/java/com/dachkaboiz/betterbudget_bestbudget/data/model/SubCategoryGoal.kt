@@ -6,9 +6,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 data class SubCategoryGoal(
-    val firebaseId: String = "",
-    val firebaseSubCategoryId: String = "",      // links to SubCategory.firebaseId
-    val firebaseParentCategoryId: String = "",   // links to Category.firebaseId
+    val subCategoryID: String = "",
+    val categoryID: String = "",
+//    val firebaseSubCategoryId: String = "",      // links to SubCategory.firebaseId
+//    val firebaseParentCategoryId: String = "",   // links to Category.firebaseId
     val minGoal: Double? = null,
     val maxGoal: Double? = null,
     val month: Int = 0,
