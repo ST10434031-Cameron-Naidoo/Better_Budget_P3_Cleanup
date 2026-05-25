@@ -106,14 +106,14 @@ class UpdateSubCategoryFragment(
                             val safeMin = minGoal ?: 0.0
                             val safeMax = maxGoal ?: 0.0
 
-                            val valid =
-                                (catMinGoal >= totalMin + safeMin) &&
-                                        (catMaxGoal >= totalMax + safeMax)
-
-                            if (!valid) {
-                                Toast.makeText(requireContext(), "Goal exceeds category limit", Toast.LENGTH_SHORT).show()
-                                return@addOnSuccessListener
-                            }
+//                            val valid =
+//                                (catMinGoal >= totalMin + safeMin) &&
+//                                        (catMaxGoal >= totalMax + safeMax)
+//
+//                            if (!valid) {
+//                                Toast.makeText(requireContext(), "Goal exceeds category limit", Toast.LENGTH_SHORT).show()
+//                                return@addOnSuccessListener
+//                            }
 
                             // 6️⃣ Update subcategory
                             val updatedSub = mapOf(

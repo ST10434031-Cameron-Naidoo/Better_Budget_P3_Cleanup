@@ -20,7 +20,6 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.User
         User::class,
         Expense::class,
         CategoryGoal::class,
-        SubCategoryGoal::class,
         Photo::class
     ],
     version = 2,
@@ -32,7 +31,6 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun expenseDao(): ExpenseDao
     abstract fun categoryGoalDao(): CategoryGoalDao
-    abstract fun subCategoryGoalDao(): SubCategoryGoalDao
     abstract fun photoDao(): PhotoDao
 
     companion object {

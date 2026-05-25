@@ -94,18 +94,18 @@ class AddSubCategoryFragment(private val parentFirebaseId: String)
                             val safeMinGoal = minGoal ?: 0.0
                             val safeMaxGoal = maxGoal ?: 0.0
 
-                            val goalsValid =
-                                (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
-                                        (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
-
-                            if (!goalsValid) {
-                                Toast.makeText(
-                                    requireContext(),
-                                    "Min or max goal total is greater than category min or max goal",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                return@addOnSuccessListener
-                            }
+//                            val goalsValid =
+//                                (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
+//                                        (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
+//
+//                            if (!goalsValid) {
+//                                Toast.makeText(
+//                                    requireContext(),
+//                                    "Min or max goal total is greater than category min or max goal",
+//                                    Toast.LENGTH_SHORT
+//                                ).show()
+//                                return@addOnSuccessListener
+//                            }
 
                             // 3️⃣ Create subcategory
                             val subCatId = userRef.child("subcategories").push().key!!
