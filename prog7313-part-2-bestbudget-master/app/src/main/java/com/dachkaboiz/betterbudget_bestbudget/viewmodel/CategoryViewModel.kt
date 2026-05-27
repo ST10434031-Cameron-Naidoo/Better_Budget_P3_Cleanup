@@ -1,30 +1,30 @@
 package com.dachkaboiz.betterbudget_bestbudget.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.CategoryRepository
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.StateFlow
 
-class CategoryViewModel(private val repo: CategoryRepository) : ViewModel() {
+class CategoryViewModel : ViewModel() {
 
-    val categories = MutableStateFlow<List<Category>>(emptyList())
+    private val repository = FirebaseCategoryRepository()
+
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories
+
     private val _category = MutableStateFlow<Category?>(null)
-    val category = _category
+    val category: StateFlow<Category?> = _category
 
-
-    fun loadCategories(email: String) {
-        viewModelScope.launch {
-            val list = repo.getCategoriesByUser(email)
-            categories.value = list
-        }
-    }
-    fun loadCategory(id: Int) {
-        viewModelScope.launch {
-            val category = repo.getCategoryById(id)
-            _category.value = category
+    fun loadCategories(uid: String) {
+        repository.getCategories(uid) { list ->
+            _categories.value = list
         }
     }
 
+    fun loadCategory(uid: String, firebaseId: String) {
+        repository.getCategoryById(uid, firebaseId) { cat ->
+            _category.value = cat
+        }
+    }
 }

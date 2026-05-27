@@ -19,25 +19,23 @@ import androidx.room.PrimaryKey
             childColumns = ["userEmail"],
             onDelete = ForeignKey.CASCADE
         ),
-        ForeignKey(
-            entity = Category::class,
-            parentColumns = ["categoryID"],
-            childColumns = ["categoryID"],
-            onDelete = ForeignKey.RESTRICT
-        ),
-        ForeignKey(
-            entity = SubCategory::class,
-            parentColumns = ["subCategoryID"],
-            childColumns = ["subCategoryID"],
-            onDelete = ForeignKey.RESTRICT
-        )
+        // Category foreign key removed — Category is now in Firebase
+        // Expense owner must update categoryID to String firebaseId
+        // when they migrate expenses to Firebase
+        // TODO: expense owner to fix this reference
+//        ForeignKey(
+//            entity = SubCategory::class,
+//            parentColumns = ["subCategoryID"],
+//            childColumns = ["subCategoryID"],
+//            onDelete = ForeignKey.RESTRICT
+//        )
     ]
 )
 data class Expense(
     @PrimaryKey(autoGenerate = true)
     val expenseID: Int = 0,
     val userEmail: String,
-    val categoryID: Int,
+    val categoryID: Int,          // stays Int for now — expense owner migrates this
     val subCategoryID: Int? = null,
     val expenseAmount: Double,
     val expenseDate: Long,

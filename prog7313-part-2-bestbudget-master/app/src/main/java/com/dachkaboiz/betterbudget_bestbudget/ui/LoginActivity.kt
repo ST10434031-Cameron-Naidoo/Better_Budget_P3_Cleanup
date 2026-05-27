@@ -86,9 +86,12 @@ class LoginActivity : AppCompatActivity() {
                                     return
                                 }
 
-                                // Save email locally
+                                // Save email and UID locally
                                 val prefs = getSharedPreferences("auth", MODE_PRIVATE)
-                                prefs.edit().putString("email", email).apply()
+                                prefs.edit()
+                                    .putString("email", email)
+                                    .putString("uid", uid)
+                                    .apply()
 
                                 AlertDialog.Builder(this@LoginActivity)
                                     .setTitle("Success")
