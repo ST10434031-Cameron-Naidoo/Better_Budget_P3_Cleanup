@@ -180,7 +180,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
                 else         -> "—"
             }
         }
-        
+
         // 1. Setup UI References
         ivPhotoPreview = view.findViewById(R.id.ivPhotoPreview)
         vPhotoPlaceholder = view.findViewById(R.id.vPhotoPlaceholder)
