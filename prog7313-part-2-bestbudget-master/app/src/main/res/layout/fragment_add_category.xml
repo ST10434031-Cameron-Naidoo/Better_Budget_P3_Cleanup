@@ -34,7 +34,7 @@
             android:background="@drawable/spinner_background"
             android:hint="Category Name*"
             android:padding="12dp"
-            android:textColorHint="@color/text_navy"
+            android:textColorHint="@color/hint_grey"
             android:fontFamily="sans-serif"
             android:inputType="text"/>
 
@@ -49,7 +49,7 @@
             android:inputType="textShortMessage"
             android:hint="Icon (emoji)*"
             android:padding="12dp"
-            android:textColorHint="@color/text_navy"
+            android:textColorHint="@color/hint_grey"
             android:fontFamily="sans-serif"/>
 
         <!-- DESCRIPTION -->
@@ -62,7 +62,7 @@
             android:background="@drawable/spinner_background"
             android:hint="Description"
             android:padding="12dp"
-            android:textColorHint="@color/text_navy"
+            android:textColorHint="@color/hint_grey"
             android:fontFamily="sans-serif"
             android:inputType="text"/>
 
@@ -76,7 +76,7 @@
             android:background="@drawable/spinner_background"
             android:hint="Min goal (optional)"
             android:padding="12dp"
-            android:textColorHint="@color/text_navy"
+            android:textColorHint="@color/hint_grey"
             android:fontFamily="sans-serif"
             android:inputType="numberDecimal"/>
 
@@ -90,7 +90,7 @@
             android:background="@drawable/spinner_background"
             android:hint="Max goal (optional)"
             android:padding="12dp"
-            android:textColorHint="@color/text_navy"
+            android:textColorHint="@color/hint_grey"
             android:fontFamily="sans-serif"
             android:inputType="numberDecimal"/>
 

@@ -29,6 +29,7 @@ import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 import android.content.Intent
+import android.widget.TextView
 
 
 class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
@@ -163,15 +164,29 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
         val etYear             = view.findViewById<EditText>(R.id.etExpenseYear)
         val etDescription      = view.findViewById<EditText>(R.id.etExpenseDescription)
         val etAmount           = view.findViewById<EditText>(R.id.etExpenseAmount)
-        //val rgFrequency        = view.findViewById<RadioGroup>(R.id.rgAutomateFrequency)
+        val rgFrequency = view.findViewById<RadioGroup>(R.id.rgAutomateFrequency)
+        val tvFrequencyUnit = view.findViewById<TextView>(R.id.tvFrequencyUnit)
         val btnCancel          = view.findViewById<Button>(R.id.btnExpenseCancel)
         val btnAdd             = view.findViewById<Button>(R.id.btnExpenseAdd)
 
+
+        // Frequency unit label updates when radio button selected
+        rgFrequency.setOnCheckedChangeListener { _, checkedId ->
+            tvFrequencyUnit.text = when (checkedId) {
+                R.id.rbDay   -> "days"
+                R.id.rbWeek  -> "weeks"
+                R.id.rbMonth -> "months"
+                R.id.rbYear  -> "years"
+                else         -> "—"
+            }
+        }
+        
         // 1. Setup UI References
         ivPhotoPreview = view.findViewById(R.id.ivPhotoPreview)
         vPhotoPlaceholder = view.findViewById(R.id.vPhotoPlaceholder)
         val btnTakePhoto = view.findViewById<Button>(R.id.btnTakePhoto)
         val btnGallery = view.findViewById<Button>(R.id.btnAddFromGallery)
+
 
         // ... Bind other views (etAmount, etDay, etc.) ...
 
@@ -331,13 +346,6 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
                 val amountText  = etAmount.text.toString().trim()
                 val description = etDescription.text.toString().trim()
 
-                //val frequencyLabel = when (rgFrequency.checkedRadioButtonId) {
-                //    R.id.rbDay   -> "Day"
-                //   R.id.rbWeek  -> "Week"
-                // R.id.rbMonth -> "Month"
-                //   R.id.rbYear  -> "Year"
-                //    else         -> null
-                //}
 
                 // ---- Validation ----
                 var hasError = false

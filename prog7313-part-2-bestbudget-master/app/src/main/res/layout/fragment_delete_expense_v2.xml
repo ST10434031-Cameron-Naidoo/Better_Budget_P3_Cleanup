@@ -48,7 +48,7 @@
                     android:fontFamily="@font/league_spartan_"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_navy"
+                    android:textColor="@color/brand_dark_navy"
                     android:text="Category Name"/>
 
                 <TextView
@@ -69,7 +69,7 @@
                 android:layout_height="wrap_content"
                 android:text="Subcategory: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp"/>
 
@@ -79,7 +79,7 @@
                 android:layout_height="wrap_content"
                 android:text="Date: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp"/>
 
@@ -89,7 +89,7 @@
                 android:layout_height="wrap_content"
                 android:text="Description: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp"/>
 
@@ -99,7 +99,7 @@
                 android:layout_height="wrap_content"
                 android:text="⚠️ This action cannot be undone. This expense will be permanently deleted."
                 android:fontFamily="@font/league_spartan_"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="13sp"
                 android:gravity="center"
                 android:layout_marginHorizontal="32dp"

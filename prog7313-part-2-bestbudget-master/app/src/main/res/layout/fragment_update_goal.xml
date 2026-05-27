@@ -44,7 +44,7 @@
             android:background="@drawable/spinner_background"
             android:padding="12dp"
             android:fontFamily="@font/league_spartan_"
-            android:textColor="@color/text_navy"
+            android:textColor="@color/brand_dark_navy"
             android:textSize="14sp"
             android:gravity="center_vertical"
             android:text="Category Name"
