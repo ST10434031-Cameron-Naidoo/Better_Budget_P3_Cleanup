@@ -55,7 +55,7 @@
                     android:fontFamily="@font/league_spartan_"
                     android:textSize="20sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_navy"
+                    android:textColor="@color/brand_dark_navy"
                     android:text="Subcategory Name"/>
 
             </LinearLayout>
@@ -66,7 +66,7 @@
                 android:layout_height="wrap_content"
                 android:text="Category: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp"/>
 
@@ -76,7 +76,7 @@
                 android:layout_height="wrap_content"
                 android:text="Description: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp"/>
 
@@ -86,7 +86,7 @@
                 android:layout_height="wrap_content"
                 android:text="Min Goal: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp"/>
 
@@ -96,7 +96,7 @@
                 android:layout_height="wrap_content"
                 android:text="Max Goal: —"
                 android:fontFamily="sans-serif"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="14sp"/>
 
 
@@ -106,7 +106,7 @@
                 android:layout_height="wrap_content"
                 android:text="⚠️ This action cannot be undone. Any expenses linked to this subcategory will lose their subcategory reference."
                 android:fontFamily="@font/league_spartan_"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:textSize="13sp"
                 android:gravity="center"
                 android:layout_marginHorizontal="32dp"

@@ -1,13 +1,13 @@
 <component name="libraryTable">
   <library name="Gradle: androidx.emoji2:emoji2:1.6.0@aar" external-system-id="GRADLE">
     <ANNOTATIONS>
-      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/766eb901cc784d0b94263ab29a95d891/transformed/emoji2-1.6.0/annotations.zip!/" />
+      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/39de20b28f6cf911ca38756c100363dd/transformed/emoji2-1.6.0/annotations.zip!/" />
     </ANNOTATIONS>
     <CLASSES>
-      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/766eb901cc784d0b94263ab29a95d891/transformed/emoji2-1.6.0/jars/libs/repackaged.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/766eb901cc784d0b94263ab29a95d891/transformed/emoji2-1.6.0/res" />
-      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/766eb901cc784d0b94263ab29a95d891/transformed/emoji2-1.6.0/jars/classes.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/766eb901cc784d0b94263ab29a95d891/transformed/emoji2-1.6.0/AndroidManifest.xml" />
+      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/39de20b28f6cf911ca38756c100363dd/transformed/emoji2-1.6.0/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/39de20b28f6cf911ca38756c100363dd/transformed/emoji2-1.6.0/res" />
+      <root url="jar://$USER_HOME$/.gradle/caches/9.4.1/transforms/39de20b28f6cf911ca38756c100363dd/transformed/emoji2-1.6.0/jars/libs/repackaged.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.4.1/transforms/39de20b28f6cf911ca38756c100363dd/transformed/emoji2-1.6.0/AndroidManifest.xml" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

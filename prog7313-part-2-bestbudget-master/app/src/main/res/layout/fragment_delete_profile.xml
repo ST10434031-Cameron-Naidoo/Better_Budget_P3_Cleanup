@@ -45,7 +45,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="20sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_navy"
+                    android:textColor="@color/brand_dark_navy"
                     android:text="Name"/>
 
             </LinearLayout>
@@ -55,7 +55,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="EMAIL —"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:layout_marginBottom="8dp"/>
 
             <TextView
@@ -63,7 +63,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="AGE —"
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:layout_marginBottom="8dp"/>
 
 
@@ -72,7 +72,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="⚠️ This action cannot be undone. Any data related to your profile will be deleted."
-                android:textColor="@color/text_navy"
+                android:textColor="@color/brand_dark_navy"
                 android:fontFamily="@font/league_spartan_"
                 android:textSize="13sp"
                 android:gravity="center"
@@ -95,7 +95,7 @@
                 android:fontFamily="@font/league_spartan_"
                 android:text="CANCEL"
                 android:textColor="@color/text_white"
-                android:backgroundTint="@color/brand_button_red"
+                android:backgroundTint="@color/brand_mid_blue"
                 android:layout_marginEnd="16dp"/>
 
             <Button
@@ -105,7 +105,7 @@
                 android:fontFamily="@font/league_spartan_"
                 android:text="DELETE"
                 android:textColor="@color/text_white"
-                android:backgroundTint="@color/brand_mid_blue"/>
+                android:backgroundTint="@color/brand_button_red"/>
 
         </LinearLayout>
     </LinearLayout>
