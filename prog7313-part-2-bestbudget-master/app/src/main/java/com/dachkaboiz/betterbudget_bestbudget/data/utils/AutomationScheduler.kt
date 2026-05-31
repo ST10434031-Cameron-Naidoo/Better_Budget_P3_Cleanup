@@ -1,9 +1,9 @@
-package com.dachkaboiz.betterbudget_bestbudget.ui
+package com.dachkaboiz.betterbudget_bestbudget.data.utils
 
 import com.dachkaboiz.betterbudget_bestbudget.data.model.AutomatedExpense
 import java.util.Calendar
 
-class AutomationScheduler {
+object AutomationScheduler {
     fun calculateNextRunDate(fromDate: Long, unit: String, multiplier: Int): Long {
         val cal = Calendar.getInstance().apply { timeInMillis = fromDate }
         when (unit) {

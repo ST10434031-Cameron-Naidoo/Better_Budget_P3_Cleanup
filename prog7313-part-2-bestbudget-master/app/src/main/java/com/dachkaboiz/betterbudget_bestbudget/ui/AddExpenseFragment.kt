@@ -15,6 +15,7 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.AutomatedExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.dachkaboiz.betterbudget_bestbudget.data.utils.AutomationScheduler
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
     // ── Repositories ──────────────────────────────────────────────────────
     private lateinit var automatedRepo: AutomatedExpenseRepository
-    private val FirebaseCategoryRepository = FirebaseCategoryRepository()
+
     private lateinit var repository: ExpenseRepository
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
@@ -252,6 +253,8 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                 val year = etYear.text.toString().trim().toIntOrNull()
                 val amount = etAmount.text.toString().trim().toDoubleOrNull()
                 val description = etDescription.text.toString().trim()
+
+                val multiplier = etMultiplier.text.toString().trim().toIntOrNull() ?: 1
 
                 if (day == null || month == null || year == null || amount == null || amount <= 0) {
                     Toast.makeText(requireContext(), "Please fill all fields correctly.", Toast.LENGTH_SHORT).show()
