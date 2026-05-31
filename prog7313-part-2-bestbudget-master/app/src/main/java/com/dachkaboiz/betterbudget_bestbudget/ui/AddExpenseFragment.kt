@@ -131,11 +131,19 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
             requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
         }
 
-<<<<<<< Updated upstream
+
         btnGallery.setOnClickListener {
             pickImageLauncher.launch(arrayOf("image/*"))
-=======
-        // ── Automation toggle ─────────────────────────────────────────────────────
+
+            // ── Default date to today ─────────────────────────────────────────
+            val cal = Calendar.getInstance()
+            etDay.setText(cal.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0'))
+            etMonth.setText((cal.get(Calendar.MONTH) + 1).toString().padStart(2, '0'))
+            etYear.setText(cal.get(Calendar.YEAR).toString())
+
+
+
+            // ── Automation toggle ─────────────────────────────────────────────────────
         val switchAutomate   = view.findViewById<Switch>(R.id.switchAutomate)
         val layoutAutomation = view.findViewById<LinearLayout>(R.id.layoutAutomationOptions)
         val rgFrequency      = view.findViewById<RadioGroup>(R.id.rgFrequency)
