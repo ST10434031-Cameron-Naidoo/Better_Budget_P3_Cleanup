@@ -27,12 +27,28 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
     private var currentImageUri: Uri? = null
     private lateinit var ivPhotoPreview: ImageView
     private lateinit var vPhotoPlaceholder: View
-    private var editingExpenseId: Int = -1
-    private var selectedCategoryFirebaseId: String = "" // replaces selectedCategoryId: Int
+    private var editingExpenseId: String = ""
+
+    private var selectedCategoryFirebaseId: String = ""
     private var categoryList: List<Category> = emptyList()
 
     private val currentUserEmail: String by lazy {
         requireActivity().getSharedPreferences("auth", 0).getString("email", "") ?: ""
+    }
+    private fun openCamera() {
+        currentImageUri = ImageUtils.createImageFile(requireContext())
+        takePictureLauncher.launch(currentImageUri)
+    }
+
+    private fun updatePhotoUI() {
+        if (currentImageUri != null) {
+            ivPhotoPreview.setImageURI(currentImageUri)
+            ivPhotoPreview.visibility = View.VISIBLE
+            vPhotoPlaceholder.visibility = View.GONE
+        } else {
+            ivPhotoPreview.visibility = View.GONE
+            vPhotoPlaceholder.visibility = View.VISIBLE
+        }
     }
 
     private val requestPermissionLauncher =
@@ -47,140 +63,155 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
                 updatePhotoUI()
                 lifecycleScope.launch(Dispatchers.IO) {
                     val storageDir = File(requireContext().getExternalFilesDir("Pictures"), "captured_images")
-                    val imageFile  = File(storageDir, currentImageUri!!.lastPathSegment ?: "temp_img")
-                    if (imageFile.exists()) ImageUtils.saveImageToGallery(requireContext(), imageFile)
+                    val imageFile = File(storageDir, currentImageUri!!.lastPathSegment ?: "temp_img")
+                    if (imageFile.exists()) {
+                        ImageUtils.saveImageToGallery(requireContext(), imageFile)
+                    }
                 }
             }
         }
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri != null) { currentImageUri = uri; updatePhotoUI() }
+            if (uri != null) {
+                currentImageUri = uri
+                updatePhotoUI()
+            }
         }
-
-    private fun openCamera() {
-        currentImageUri = ImageUtils.createImageFile(requireContext())
-        takePictureLauncher.launch(currentImageUri)
-    }
-
-    private fun updatePhotoUI() {
-        if (currentImageUri != null) {
-            ivPhotoPreview.setImageURI(currentImageUri)
-            ivPhotoPreview.visibility    = View.VISIBLE
-            vPhotoPlaceholder.visibility = View.GONE
-        } else {
-            ivPhotoPreview.visibility    = View.GONE
-            vPhotoPlaceholder.visibility = View.VISIBLE
-        }
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        val db  = AppDatabase.getDatabase(requireContext())
-        repository       = ExpenseRepository(db.expenseDao())
-        editingExpenseId = arguments?.getInt("expenseId", -1) ?: -1
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        repository = ExpenseRepository(uid)
 
-        if (editingExpenseId == -1) {
+        editingExpenseId = arguments?.getString("expenseId") ?: ""
+
+        // FIXED: correct validation
+        if (editingExpenseId.isEmpty()) {
             Toast.makeText(requireContext(), "No expense to edit.", Toast.LENGTH_SHORT).show()
             parentFragmentManager.popBackStack()
             return
         }
 
-        ivPhotoPreview    = view.findViewById(R.id.ivEditPhotoPreview)
+        ivPhotoPreview = view.findViewById(R.id.ivEditPhotoPreview)
         vPhotoPlaceholder = view.findViewById(R.id.vEditPhotoPlaceholder)
-        val btnCamera     = view.findViewById<Button>(R.id.btnEditTakePhoto)
-        val btnGallery    = view.findViewById<Button>(R.id.btnEditAddFromGallery)
+        val btnCamera = view.findViewById<Button>(R.id.btnEditTakePhoto)
+        val btnGallery = view.findViewById<Button>(R.id.btnEditAddFromGallery)
         val spinnerCategory = view.findViewById<Spinner>(R.id.spinnerEditExpenseCategory)
-        val etDay         = view.findViewById<EditText>(R.id.etEditExpenseDay)
-        val etMonth       = view.findViewById<EditText>(R.id.etEditExpenseMonth)
-        val etYear        = view.findViewById<EditText>(R.id.etEditExpenseYear)
+        val etDay = view.findViewById<EditText>(R.id.etEditExpenseDay)
+        val etMonth = view.findViewById<EditText>(R.id.etEditExpenseMonth)
+        val etYear = view.findViewById<EditText>(R.id.etEditExpenseYear)
         val etDescription = view.findViewById<EditText>(R.id.etEditExpenseDescription)
-        val etAmount      = view.findViewById<EditText>(R.id.etEditExpenseAmount)
-        val btnCancel     = view.findViewById<Button>(R.id.btnEditExpenseCancel)
-        val btnUpdate     = view.findViewById<Button>(R.id.btnEditExpenseUpdate)
+        val etAmount = view.findViewById<EditText>(R.id.etEditExpenseAmount)
+        val btnCancel = view.findViewById<Button>(R.id.btnEditExpenseCancel)
+        val btnUpdate = view.findViewById<Button>(R.id.btnEditExpenseUpdate)
 
         btnCamera.setOnClickListener { requestPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
         btnGallery.setOnClickListener { pickImageLauncher.launch("image/*") }
         btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
 
-        if (uid != null) {
-            firebaseCategoryRepository.getCategories(uid) { list ->
-                categoryList = list
-                if (categoryList.isEmpty()) {
-                    requireActivity().runOnUiThread {
-                        Toast.makeText(requireContext(), "No categories found.", Toast.LENGTH_LONG).show()
-                        parentFragmentManager.popBackStack()
-                    }
-                    return@getCategories
-                }
-
-                val names = categoryList.map { it.categoryName }
+        firebaseCategoryRepository.getCategories(uid) { list ->
+            categoryList = list
+            if (categoryList.isEmpty()) {
                 requireActivity().runOnUiThread {
-                    spinnerCategory.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, names)
-                    spinnerCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                        override fun onItemSelected(p: AdapterView<*>, v: View?, pos: Int, id: Long) {
-                            selectedCategoryFirebaseId = categoryList[pos].firebaseId
-                        }
-                        override fun onNothingSelected(p: AdapterView<*>) {}
-                    }
+                    Toast.makeText(requireContext(), "No categories found.", Toast.LENGTH_LONG).show()
+                    parentFragmentManager.popBackStack()
                 }
+                return@getCategories
+            }
 
-                lifecycleScope.launch {
-                    val expense = repository.getExpenseById(editingExpenseId)
-                    expense?.let {
-                        // TODO: once expense owner migrates categoryID to String firebaseId,
-                        // replace it.categoryID.toString() with the actual firebaseId field
-                        val index = categoryList.indexOfFirst { c -> c.firebaseId == it.categoryID.toString() }
-                        requireActivity().runOnUiThread { if (index >= 0) spinnerCategory.setSelection(index) }
-                        etAmount.setText(it.expenseAmount.toString())
-                        etDescription.setText(it.expenseDescription ?: "")
-                        val cal = Calendar.getInstance().apply { timeInMillis = it.expenseDate }
-                        etDay.setText(cal.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0'))
-                        etMonth.setText((cal.get(Calendar.MONTH) + 1).toString().padStart(2, '0'))
-                        etYear.setText(cal.get(Calendar.YEAR).toString())
-                        it.imageUri?.let { uriStr -> currentImageUri = Uri.parse(uriStr); updatePhotoUI() }
+            val names = categoryList.map { it.categoryName }
+            requireActivity().runOnUiThread {
+                spinnerCategory.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, names)
+                spinnerCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(p: AdapterView<*>, v: View?, pos: Int, id: Long) {
+                        selectedCategoryFirebaseId = categoryList[pos].firebaseId
+                    }
+                    override fun onNothingSelected(p: AdapterView<*>) {}
+                }
+            }
+
+            lifecycleScope.launch {
+                val expense = repository.getExpenseById(editingExpenseId)
+                expense?.let {
+                    val index = categoryList.indexOfFirst { c ->
+                        c.firebaseId == it.categoryId
+                    }
+
+                    requireActivity().runOnUiThread {
+                        if (index >= 0) spinnerCategory.setSelection(index)
+                    }
+
+                    etAmount.setText(it.expenseAmount.toString())
+                    etDescription.setText(it.expenseDescription ?: "")
+
+                    val cal = Calendar.getInstance().apply { timeInMillis = it.expenseDate }
+                    etDay.setText(cal.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0'))
+                    etMonth.setText((cal.get(Calendar.MONTH) + 1).toString().padStart(2, '0'))
+                    etYear.setText(cal.get(Calendar.YEAR).toString())
+
+                    it.imageUri?.let { uriStr ->
+                        currentImageUri = Uri.parse(uriStr)
+                        updatePhotoUI()
                     }
                 }
             }
         }
 
         btnUpdate.setOnClickListener {
-            val dayText     = etDay.text.toString().trim()
-            val monthText   = etMonth.text.toString().trim()
-            val yearText    = etYear.text.toString().trim()
-            val amountText  = etAmount.text.toString().trim()
+            val dayText = etDay.text.toString().trim()
+            val monthText = etMonth.text.toString().trim()
+            val yearText = etYear.text.toString().trim()
+            val amountText = etAmount.text.toString().trim()
             val description = etDescription.text.toString().trim()
-            var hasError    = false
+
+            var hasError = false
 
             val amountDouble = amountText.toDoubleOrNull()
-            if (amountText.isEmpty() || amountDouble == null || amountDouble <= 0) { etAmount.error = "Enter a valid amount greater than 0"; hasError = true }
+            if (amountDouble == null || amountDouble <= 0) {
+                etAmount.error = "Enter a valid amount greater than 0"; hasError = true
+            }
+
             val day = dayText.toIntOrNull()
-            if (day == null || day < 1 || day > 31) { etDay.error = "1–31"; hasError = true }
+            if (day == null || day !in 1..31) { etDay.error = "1–31"; hasError = true }
+
             val month = monthText.toIntOrNull()
-            if (month == null || month < 1 || month > 12) { etMonth.error = "1–12"; hasError = true }
+            if (month == null || month !in 1..12) { etMonth.error = "1–12"; hasError = true }
+
             val year = yearText.toIntOrNull()
-            if (year == null || year < 2000 || year > 2100) { etYear.error = "e.g. 2025"; hasError = true }
-            if (selectedCategoryFirebaseId.isEmpty()) { Toast.makeText(requireContext(), "Please select a category", Toast.LENGTH_SHORT).show(); hasError = true }
+            if (year == null || year !in 2000..2100) { etYear.error = "e.g. 2025"; hasError = true }
+
+            if (selectedCategoryFirebaseId.isEmpty()) {
+                Toast.makeText(requireContext(), "Please select a category", Toast.LENGTH_SHORT).show()
+                hasError = true
+            }
+
             if (hasError) return@setOnClickListener
 
-            val cal = Calendar.getInstance().apply { set(year!!, month!! - 1, day!!, 0, 0, 0); set(Calendar.MILLISECOND, 0) }
+            val cal = Calendar.getInstance().apply {
+                set(year!!, month!! - 1, day!!, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
 
             lifecycleScope.launch {
-                repository.updateExpense(Expense(
-                    expenseID          = editingExpenseId,
-                    userEmail          = currentUserEmail,
-                    categoryID         = 0, // TODO: expense owner migrates categoryID to String firebaseId
-                    subCategoryID      = null,
-                    expenseAmount      = amountDouble!!,
-                    expenseDate        = cal.timeInMillis,
-                    expenseDescription = description.ifEmpty { null },
-                    imageUri           = currentImageUri?.toString(),
-                    imageName          = null,
-                    imageDescription   = null,
-                    automationFrequency= null
-                ))
+                repository.updateExpense(
+                    Expense(
+                        expenseID = editingExpenseId,
+                        userEmail = currentUserEmail,
+                        categoryId = selectedCategoryFirebaseId,
+                        subCategoryId = null,
+                        expenseAmount = amountDouble!!,
+                        expenseDate = cal.timeInMillis,
+                        expenseDescription = description.ifEmpty { null },
+                        imageUri = currentImageUri?.toString(),
+                        imageName = null,
+                        imageDescription = null,
+                        automationFrequency = null,
+                        automationMultiplier = null
+                    )
+                )
+
                 Toast.makeText(requireContext(), "Expense updated!", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
             }

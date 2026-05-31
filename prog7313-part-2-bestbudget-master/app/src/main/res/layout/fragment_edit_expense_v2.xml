@@ -170,22 +170,120 @@
             android:layout_marginHorizontal="32dp"
             android:layout_marginTop="16dp"/>
 
-        <!-- AUTOMATE COMING SOON -->
-        <TextView
+        <!-- AUTOMATE SECTION -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="— Coming in Part 3 —"
-            android:fontFamily="sans-serif"
-            android:textColor="@color/hint_grey"
-            android:textSize="12sp"
-            android:textStyle="italic"
-            android:gravity="center"
             android:layout_marginHorizontal="32dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="16dp"
             android:background="@drawable/spinner_background"
             android:padding="12dp"
-            android:alpha="0.6"/>
+            android:orientation="horizontal">
+
+            <!-- FREQUENCY RADIO GROUP -->
+            <RadioGroup
+                android:id="@+id/rgAutomateFrequency"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/rbDay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Daily"
+                    android:fontFamily="sans-serif"
+                    android:textColor="@color/brand_dark_navy"
+                    android:buttonTint="@color/brand_mid_blue"
+                    android:textSize="13sp"/>
+
+                <RadioButton
+                    android:id="@+id/rbWeek"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Weekly"
+                    android:fontFamily="sans-serif"
+                    android:textColor="@color/brand_dark_navy"
+                    android:buttonTint="@color/brand_mid_blue"
+                    android:textSize="13sp"/>
+
+                <RadioButton
+                    android:id="@+id/rbMonth"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Monthly"
+                    android:fontFamily="sans-serif"
+                    android:textColor="@color/brand_dark_navy"
+                    android:buttonTint="@color/brand_mid_blue"
+                    android:textSize="13sp"/>
+
+                <RadioButton
+                    android:id="@+id/rbYear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Yearly"
+                    android:fontFamily="sans-serif"
+                    android:textColor="@color/brand_dark_navy"
+                    android:buttonTint="@color/brand_mid_blue"
+                    android:textSize="13sp"/>
+
+            </RadioGroup>
+
+            <!-- MULTIPLIER -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_vertical"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Every:"
+                    android:fontFamily="@font/league_spartan_"
+                    android:textColor="@color/brand_dark_navy"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <EditText
+                        android:id="@+id/etMultiplier"
+                        android:layout_width="60dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/spinner_background"
+                        android:hint="1"
+                        android:inputType="number"
+                        android:gravity="center"
+                        android:padding="8dp"
+                        android:fontFamily="sans-serif"
+                        android:textColor="@color/brand_dark_navy"
+                        android:textColorHint="@color/hint_grey"
+                        android:layout_marginEnd="8dp"/>
+
+                    <TextView
+                        android:id="@+id/tvFrequencyUnit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:fontFamily="sans-serif"
+                        android:textColor="@color/brand_mid_blue"
+                        android:textSize="13sp"
+                        android:textStyle="bold"/>
+
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
 
         <!-- PHOTO SECTION -->
         <LinearLayout
