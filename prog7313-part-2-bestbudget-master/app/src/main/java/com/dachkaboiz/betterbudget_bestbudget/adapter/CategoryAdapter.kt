@@ -34,7 +34,7 @@ class CategoryAdapter<T>(
         val tvMaxGoal: TextView = view.findViewById(R.id.tvMaxGoal)
         val tvTotalSpent: TextView = view.findViewById(R.id.tvCategoryTotalSpent)
 
-        val llGoalSection: TextView = view.findViewById(R.id.llCategoryFullExtension)
+        val tvViewCatBreakdown: TextView = view.findViewById(R.id.llCategoryFullExtension)
         val progressBar: ProgressBar = view.findViewById(R.id.pbCategoryProgress)
         val tvNoGoal: TextView = view.findViewById(R.id.tvNoProgressBar)
 
@@ -85,13 +85,19 @@ class CategoryAdapter<T>(
         val item = getItem(position)
 
         // Reset UI
-        holder.llGoalSection.visibility = View.GONE
         holder.progressBar.visibility = View.GONE
-        holder.tvNoGoal.visibility = View.GONE
+        holder.tvNoGoal.visibility = View.VISIBLE
         holder.tvMinGoal.text = ""
         holder.tvMaxGoal.text = ""
         holder.tvTotalSpent.text = ""
-
+        if(showBreakdownButton)
+        {
+            holder.tvViewCatBreakdown.visibility = View.VISIBLE
+        }
+        else
+        {
+            holder.tvViewCatBreakdown.visibility = View.VISIBLE
+        }
         when (item) {
 
             is Category -> {
@@ -127,7 +133,7 @@ class CategoryAdapter<T>(
 
                 // Goal handling
                 if (goal != null) {
-                    holder.llGoalSection.visibility = View.VISIBLE
+
 
                     val min = when (goal) {
                         is CategoryGoal -> goal.minGoal ?: 0.0
@@ -158,14 +164,13 @@ class CategoryAdapter<T>(
                         holder.tvNoGoal.visibility = View.VISIBLE
                     }
 
-                } else {
-                    holder.llGoalSection.visibility = View.GONE
                 }
+
             }
         }
 
         // Click listeners
-        holder.llGoalSection.setOnClickListener { onItemClick?.invoke(item) }
+        holder.tvViewCatBreakdown.setOnClickListener { onItemClick?.invoke(item) }
         holder.ivDeleteCategory.setOnClickListener { onDeleteClick(item) }
         holder.ivEditCategory.setOnClickListener { onEditClick(item) }
 
