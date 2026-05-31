@@ -117,8 +117,33 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
             requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
         }
 
+<<<<<<< Updated upstream
         btnGallery.setOnClickListener {
             pickImageLauncher.launch(arrayOf("image/*"))
+=======
+        // ── Automation toggle ─────────────────────────────────────────────────────
+        val switchAutomate   = view.findViewById<Switch>(R.id.switchAutomate)
+        val layoutAutomation = view.findViewById<LinearLayout>(R.id.layoutAutomationOptions)
+        val rgFrequency      = view.findViewById<RadioGroup>(R.id.rgFrequency)
+
+        switchAutomate.setOnCheckedChangeListener { _, checked ->
+            isAutomated = checked
+            layoutAutomation.visibility = if (checked) View.VISIBLE else View.GONE
+        }
+
+        rgFrequency.setOnCheckedChangeListener { _, checkedId ->
+            selectedFrequencyUnit = when (checkedId) {
+                R.id.rbFreqDay   -> "DAY"
+                R.id.rbFreqWeek  -> "WEEK"
+                R.id.rbFreqMonth -> "MONTH"
+                R.id.rbFreqYear  -> "YEAR"
+                else             -> "MONTH"
+            }
+        }
+
+        parentFragmentManager.setFragmentResultListener("camera_request", viewLifecycleOwner) { _, bundle ->
+            bundle.getString("image_uri")?.let { currentImageUri = Uri.parse(it); updatePhotoUI() }
+>>>>>>> Stashed changes
         }
 
         btnCancel.setOnClickListener {
@@ -215,4 +240,19 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
             }
         }
     }
+<<<<<<< Updated upstream
 }
+=======
+
+    private suspend fun saveExpense(expense: Expense, customMessage: String?) {
+        if (editingExpenseId != null) repository.updateExpense(expense)
+        else repository.insertExpense(expense)
+
+        
+
+        Toast.makeText(requireContext(), customMessage ?: if (editingExpenseId != null) "Expense updated!" else "Expense added!", Toast.LENGTH_SHORT).show()
+        pendingExpense = null
+        parentFragmentManager.popBackStack()
+    }
+}
+>>>>>>> Stashed changes
