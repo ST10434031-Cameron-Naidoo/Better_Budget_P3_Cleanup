@@ -72,8 +72,13 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
     // ── Automation ────────────────────────────────────────────────────────────
     private val automatedRepo = FirebaseAutomatedExpenseRepository()
+
     private var isAutomated = false
     private var selectedFrequencyUnit = "MONTH"
+
+    private var selectedMultiplier: Int = 1
+
+
 
 
     private fun openCamera() {
