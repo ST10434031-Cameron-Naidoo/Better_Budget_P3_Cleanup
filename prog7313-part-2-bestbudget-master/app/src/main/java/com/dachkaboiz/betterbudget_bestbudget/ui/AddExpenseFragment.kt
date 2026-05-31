@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
 
-class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
+class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
     private lateinit var repository: ExpenseRepository
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
