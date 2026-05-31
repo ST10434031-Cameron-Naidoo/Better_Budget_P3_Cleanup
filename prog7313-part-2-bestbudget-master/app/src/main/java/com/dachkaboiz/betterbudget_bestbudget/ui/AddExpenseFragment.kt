@@ -23,6 +23,9 @@ import java.util.Calendar
 
 class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
+    // ── Repositories ──────────────────────────────────────────────────────
+    private lateinit var automatedRepo: AutomatedExpenseRepository
+    private val FirebaseCategoryRepository = FirebaseCategoryRepository()
     private lateinit var repository: ExpenseRepository
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
@@ -33,6 +36,12 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
     private var currentImageUri: Uri? = null
     private lateinit var ivPhotoPreview: ImageView
     private lateinit var vPhotoPlaceholder: View
+
+    // ── Automation state ──────────────────────────────────────────────────
+    private var selectedFrequencyUnit: String? = null   // null = no automation selected
+    private var selectedMultiplier: Int = 1
+
+
 
     private val currentUserEmail: String by lazy {
         requireActivity().getSharedPreferences("auth", 0).getString("email", "") ?: ""
@@ -71,13 +80,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
             }
         }
 
-    // ── Automation ────────────────────────────────────────────────────────────
-    private val automatedRepo = AutomatedExpenseRepository()
 
-    private var isAutomated = false
-    private var selectedFrequencyUnit = "MONTH"
-
-    private var selectedMultiplier: Int = 1
 
 
 
