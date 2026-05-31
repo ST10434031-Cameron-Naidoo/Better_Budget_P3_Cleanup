@@ -17,12 +17,9 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.User
 
 @Database(
     entities = [
-        User::class,
-        Expense::class,
-        CategoryGoal::class,
-        Photo::class
+        User::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
