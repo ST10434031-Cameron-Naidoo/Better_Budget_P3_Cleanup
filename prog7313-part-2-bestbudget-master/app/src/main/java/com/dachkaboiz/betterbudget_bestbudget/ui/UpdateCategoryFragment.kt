@@ -6,10 +6,15 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
+import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryGoalRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class UpdateCategoryFragment(
     private val firebaseId: String
@@ -17,32 +22,49 @@ class UpdateCategoryFragment(
 
     private val repository = FirebaseCategoryRepository()
     private var currentCategory: Category? = null
+    private var currentGoal: CategoryGoal? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         val etName        = view.findViewById<EditText>(R.id.etEditCategoryName)
         val etIcon        = view.findViewById<EditText>(R.id.etEditCategoryIcon)
         val etDescription = view.findViewById<EditText>(R.id.etEditCategoryDescription)
+
+        val etMinGoal     = view.findViewById<EditText>(R.id.etEditCategoryMinGoal)
+        val etMaxGoal     = view.findViewById<EditText>(R.id.etEditCategoryMaxGoal)
+
         val btnUpdate     = view.findViewById<Button>(R.id.btnEditCategoryUpdate)
         val btnCancel     = view.findViewById<Button>(R.id.btnEditCategoryCancel)
 
-        // Load existing category from Firebase using firebaseId
-        // firebaseId is passed in from CategoryFragment or
-        // CategoryBreakdownFragment when the user taps edit.
-        // Without this load, the form would be blank on open.
-        if (uid != null) {
-            repository.getCategoryById(uid, firebaseId) { cat ->
-                currentCategory = cat
-                requireActivity().runOnUiThread {
-                    cat?.let {
-                        etName.setText(it.categoryName)
-                        etIcon.setText(it.categoryIcon)
-                        etDescription.setText(it.categoryDescription)
-                    }
+        val goalRepo = FirebaseCategoryGoalRepository(uid)
+
+        // -----------------------------
+        // LOAD CATEGORY
+        // -----------------------------
+        repository.getCategoryById(uid, firebaseId) { cat ->
+            currentCategory = cat
+            requireActivity().runOnUiThread {
+                cat?.let {
+                    etName.setText(it.categoryName)
+                    etIcon.setText(it.categoryIcon)
+                    etDescription.setText(it.categoryDescription)
                 }
+            }
+        }
+
+        // -----------------------------
+        // LOAD EXISTING GOAL
+        // -----------------------------
+        lifecycleScope.launch {
+            val allGoals = goalRepo.getAllGoals()
+            currentGoal = allGoals.firstOrNull { it.categoryId == firebaseId }
+
+            currentGoal?.let { goal ->
+                etMinGoal.setText(goal.minGoal?.toString() ?: "")
+                etMaxGoal.setText(goal.maxGoal?.toString() ?: "")
             }
         }
 
@@ -51,10 +73,6 @@ class UpdateCategoryFragment(
         }
 
         btnUpdate.setOnClickListener {
-            if (uid == null) {
-                Toast.makeText(requireContext(), "Not logged in", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
 
             val name        = etName.text.toString().trim()
             val icon        = etIcon.text.toString().trim()
@@ -75,35 +93,58 @@ class UpdateCategoryFragment(
                 return@setOnClickListener
             }
 
-            // currentCategory will be null if the Firebase load
-            // hasn't returned yet when the user taps Update.
-            // The ?: return@setOnClickListener guards against this.
             val updatedCategory = currentCategory?.copy(
-                categoryName        = name,
-                categoryIcon        = icon,
+                categoryName = name,
+                categoryIcon = icon,
                 categoryDescription = description
             ) ?: return@setOnClickListener
 
+            // -----------------------------
+            // UPDATE CATEGORY
+            // -----------------------------
             repository.updateCategory(uid, updatedCategory) { success ->
                 requireActivity().runOnUiThread {
-                    if (success) {
-                        // Option A — goal editing is done from the Goals screen
-                        // Goal fields in the XML are visible but not saved here.
-                        // CategoryGoal owner will wire goal update back into
-                        // this screen after their Firebase migration.
-                        Toast.makeText(
-                            requireContext(),
-                            "Category updated! Edit goals from the Goals screen.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        parentFragmentManager.popBackStack()
-                    } else {
-                        Toast.makeText(
-                            requireContext(),
-                            "Failed to update category",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    if (!success) {
+                        Toast.makeText(requireContext(), "Failed to update category", Toast.LENGTH_SHORT).show()
+                        return@runOnUiThread
                     }
+
+                    // -----------------------------
+                    // UPDATE OR CREATE GOAL
+                    // -----------------------------
+                    val minGoal = etMinGoal.text.toString().trim().toDoubleOrNull()
+                    val maxGoal = etMaxGoal.text.toString().trim().toDoubleOrNull()
+
+                    lifecycleScope.launch {
+                        if (minGoal != null || maxGoal != null) {
+
+                            val cal = Calendar.getInstance()
+
+                            if (currentGoal == null) {
+                                // CREATE NEW GOAL
+                                val newGoal = CategoryGoal(
+                                    goalId = goalRepo.generateGoalId(),
+                                    categoryId = firebaseId,
+                                    minGoal = minGoal,
+                                    maxGoal = maxGoal,
+                                    month = cal.get(Calendar.MONTH) + 1,
+                                    year = cal.get(Calendar.YEAR)
+                                )
+                                goalRepo.insertGoal(newGoal)
+
+                            } else {
+                                // UPDATE EXISTING GOAL
+                                val updatedGoal = currentGoal!!.copy(
+                                    minGoal = minGoal,
+                                    maxGoal = maxGoal
+                                )
+                                goalRepo.updateGoal(updatedGoal)
+                            }
+                        }
+                    }
+
+                    Toast.makeText(requireContext(), "Category updated!", Toast.LENGTH_LONG).show()
+                    parentFragmentManager.popBackStack()
                 }
             }
         }
