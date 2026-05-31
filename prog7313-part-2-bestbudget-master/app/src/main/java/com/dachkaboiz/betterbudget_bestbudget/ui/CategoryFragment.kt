@@ -18,7 +18,7 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class CategoryFragment : Fragment(R.layout.fragment_category) {
+class CategoryFragment : Fragment(R.layout.fragment_category_breakdown_v2) {
 
     private lateinit var viewModel: CategoryViewModel
     private lateinit var adapter: CategoryAdapter<Any>
