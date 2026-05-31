@@ -22,6 +22,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
 
+
+
 class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
     // ── Repositories ──────────────────────────────────────────────────────
@@ -107,6 +109,8 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
         repository = ExpenseRepository(uid)
+
+        automatedRepo = AutomatedExpenseRepository(uid)
 
         editingExpenseId = arguments?.getString("expenseId")
 
