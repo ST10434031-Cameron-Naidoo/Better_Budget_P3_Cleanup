@@ -122,6 +122,11 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
         val btnTakePhoto = view.findViewById<Button>(R.id.btnTakePhoto)
         val btnGallery = view.findViewById<Button>(R.id.btnAddFromGallery)
 
+        // ── Automation views ────────────────────────
+        val rgFrequency      = view.findViewById<RadioGroup>(R.id.rgAutomateFrequency)
+        val etMultiplier     = view.findViewById<EditText>(R.id.etMultiplier)
+        val tvFrequencyUnit  = view.findViewById<TextView>(R.id.tvFrequencyUnit)
+
         btnTakePhoto.setOnClickListener {
             requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
         }
