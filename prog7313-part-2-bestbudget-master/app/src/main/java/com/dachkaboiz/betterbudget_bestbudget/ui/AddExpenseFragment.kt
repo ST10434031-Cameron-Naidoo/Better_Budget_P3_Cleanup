@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.AutomatedExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
@@ -71,7 +72,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
         }
 
     // ── Automation ────────────────────────────────────────────────────────────
-    private val automatedRepo = FirebaseAutomatedExpenseRepository()
+    private val automatedRepo = AutomatedExpenseRepository()
 
     private var isAutomated = false
     private var selectedFrequencyUnit = "MONTH"
