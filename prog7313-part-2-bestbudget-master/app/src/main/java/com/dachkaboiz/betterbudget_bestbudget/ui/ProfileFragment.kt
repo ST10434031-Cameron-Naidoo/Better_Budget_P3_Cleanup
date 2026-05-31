@@ -11,7 +11,6 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -64,7 +63,7 @@ class ProfileFragment : Fragment(R.layout.fragment_profile_v2) {
             "user_${System.currentTimeMillis()}.jpg"
         )
 
-        // ⭐ Ensure the file actually exists on disk
+        //  Ensure the file actually exists on disk
         photoFile.createNewFile()
 
         return FileProvider.getUriForFile(
