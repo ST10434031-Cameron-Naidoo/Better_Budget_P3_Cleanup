@@ -80,6 +80,12 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense) {
             }
         }
 
+    // ── Automation ────────────────────────────────────────────────────────────
+    private val automatedRepo = FirebaseAutomatedExpenseRepository()
+    private var isAutomated = false
+    private var selectedFrequencyUnit = "MONTH"
+
+
     private fun openCamera() {
         currentImageUri = ImageUtils.createImageFile(requireContext())
         takePictureLauncher.launch(currentImageUri)
