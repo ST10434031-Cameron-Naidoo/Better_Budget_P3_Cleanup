@@ -9,40 +9,47 @@ import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class AddGoalFragment : Fragment(R.layout.fragment_add_goal){
+class AddGoalFragment : Fragment(R.layout.fragment_add_goal) {
 
     private var categoryList: List<Category> = listOf()
+    private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val email = (requireActivity() as MainActivity).email ?: ""
-        val db = AppDatabase.getDatabase(requireContext())
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        val db  = AppDatabase.getDatabase(requireContext())
 
-        val spinner = view.findViewById<Spinner>(R.id.spCategorySelector)
-        val etMin = view.findViewById<EditText>(R.id.etGoalMinAmount)
-        val etMax = view.findViewById<EditText>(R.id.etGoalMaxAmount)
-        val btnAdd = view.findViewById<Button>(R.id.btnAddGoal)
+        val spinner   = view.findViewById<Spinner>(R.id.spCategorySelector)
+        val etMin     = view.findViewById<EditText>(R.id.etGoalMinAmount)
+        val etMax     = view.findViewById<EditText>(R.id.etGoalMaxAmount)
+        val btnAdd    = view.findViewById<Button>(R.id.btnAddGoal)
         val btnCancel = view.findViewById<Button>(R.id.btnCancelGoal)
 
-        // 1. Fetch Categories to populate the Spinner
-        lifecycleScope.launch {
-            categoryList = db.categoryDao().getCategoriesByUser(email)
-            val names = categoryList.map { it.categoryName }
-
-            val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, names)
-            spinner.adapter = adapter
+        if (uid != null) {
+            firebaseCategoryRepository.getCategories(uid) { list ->
+                categoryList = list
+                val names = list.map { it.categoryName }
+                requireActivity().runOnUiThread {
+                    spinner.adapter = ArrayAdapter(
+                        requireContext(),
+                        android.R.layout.simple_spinner_dropdown_item,
+                        names
+                    )
+                }
+            }
         }
 
-        // 2. Save logic
         btnAdd.setOnClickListener {
             val selectedPosition = spinner.selectedItemPosition
             val maxText = etMax.text.toString()
 
-            if (selectedPosition == AdapterView.INVALID_POSITION) {
+            if (selectedPosition == AdapterView.INVALID_POSITION || categoryList.isEmpty()) {
                 Toast.makeText(requireContext(), "Please select a category", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -52,20 +59,18 @@ class AddGoalFragment : Fragment(R.layout.fragment_add_goal){
                 return@setOnClickListener
             }
 
-            val selectedCategory = categoryList[selectedPosition]
             val cal = Calendar.getInstance()
 
+            // TODO: CategoryGoal owner to replace categoryID = 0
+            // with firebaseId link when they migrate CategoryGoal
             lifecycleScope.launch {
                 val goal = CategoryGoal(
-                    categoryID = selectedCategory.categoryID,
-                    minGoal = etMin.text.toString().toDoubleOrNull(),
-                    maxGoal = maxText.toDoubleOrNull(),
-                    month = cal.get(Calendar.MONTH) + 1,
-                    year = cal.get(Calendar.YEAR)
-                    
-                    
+                    categoryID = 0,
+                    minGoal    = etMin.text.toString().toDoubleOrNull(),
+                    maxGoal    = maxText.toDoubleOrNull(),
+                    month      = cal.get(Calendar.MONTH) + 1,
+                    year       = cal.get(Calendar.YEAR)
                 )
-
                 db.categoryGoalDao().insertCategoryGoal(goal)
                 Toast.makeText(requireContext(), "Goal Added!", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
