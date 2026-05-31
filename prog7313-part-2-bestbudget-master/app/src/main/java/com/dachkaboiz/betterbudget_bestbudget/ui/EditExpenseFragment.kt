@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
@@ -36,9 +37,40 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
         requireActivity().getSharedPreferences("auth", 0).getString("email", "") ?: ""
     }
     private fun openCamera() {
-        currentImageUri = ImageUtils.createImageFile(requireContext())
-        takePictureLauncher.launch(currentImageUri)
+        currentImageUri = createImageUri()
+        // Open camera safely
+        currentImageUri?.let { uri ->
+            // Launch camera
+            takePictureLauncher.launch(uri)
+        }
     }
+    private fun createImageUri(): Uri {
+        val photoFile = File(
+            requireContext().externalCacheDir,
+            "expense_${System.currentTimeMillis()}.jpg"
+        )
+
+        //  Ensure the file actually exists on disk
+        photoFile.createNewFile()
+
+        return FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.provider",
+            photoFile
+        )
+    }
+
+    // TAKE PICTURE
+    private val takePictureLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && currentImageUri != null) {
+                ivPhotoPreview.setImageURI(currentImageUri)
+                ivPhotoPreview.visibility = View.VISIBLE
+                vPhotoPlaceholder.visibility = View.GONE
+            } else {
+                Toast.makeText(requireContext(), "Could not take picture", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     private fun updatePhotoUI() {
         if (currentImageUri != null) {
@@ -57,19 +89,7 @@ class EditExpenseFragment : Fragment(R.layout.fragment_edit_expense_v2) {
             else Toast.makeText(requireContext(), "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
 
-    private val takePictureLauncher =
-        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-            if (success && currentImageUri != null) {
-                updatePhotoUI()
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val storageDir = File(requireContext().getExternalFilesDir("Pictures"), "captured_images")
-                    val imageFile = File(storageDir, currentImageUri!!.lastPathSegment ?: "temp_img")
-                    if (imageFile.exists()) {
-                        ImageUtils.saveImageToGallery(requireContext(), imageFile)
-                    }
-                }
-            }
-        }
+    
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->

@@ -52,12 +52,16 @@ class ExpenseRepository(
 
     suspend fun getExpensesByCategory(categoryId: String): List<Expense> =
         suspendCoroutine { cont ->
-            expensesRef.orderByChild("categoryId").equalTo(categoryId).get()
+            expensesRef.get()
                 .addOnSuccessListener { snap ->
-                    cont.resume(snap.children.mapNotNull { it.getValue(Expense::class.java) })
+                    val list = snap.children
+                        .mapNotNull { it.getValue(Expense::class.java) }
+                        .filter { it.categoryId == categoryId }
+                    cont.resume(list)
                 }
                 .addOnFailureListener { cont.resume(emptyList()) }
         }
+
     suspend fun deleteExpense(expense: Expense) =
         suspendCoroutine<Unit> { cont ->
             expensesRef.child(expense.expenseID)

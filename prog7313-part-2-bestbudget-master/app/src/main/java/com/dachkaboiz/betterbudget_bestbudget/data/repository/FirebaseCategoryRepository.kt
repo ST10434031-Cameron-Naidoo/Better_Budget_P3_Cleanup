@@ -13,29 +13,36 @@ class FirebaseCategoryRepository {
     private val db = FirebaseDatabase.getInstance().reference
 
     // INSERT
-    fun insertCategory(uid: String, category: Category, onResult: (Boolean) -> Unit) {
-        val ref = db.child("users").child(uid).child("categories").push()
-        val firebaseId = ref.key ?: return onResult(false)
-        val categoryWithId = category.copy(firebaseId = firebaseId)
-        ref.setValue(categoryWithId)
-            .addOnSuccessListener { onResult(true) }
-            .addOnFailureListener { onResult(false) }
+
+    fun insertCategory(
+        uid: String,
+        category: Category,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        val catRef = db.child("users").child(uid).child("categories")
+        val newId = catRef.push().key
+
+        if (newId == null) {
+            callback(false, null)
+            return
+        }
+
+        val categoryWithId = category.copy(firebaseId = newId)
+
+        catRef.child(newId)
+            .setValue(categoryWithId)
+            .addOnSuccessListener { callback(true, newId) }
+            .addOnFailureListener { callback(false, null) }
     }
 
-    // GET ALL FOR USER
-    fun getCategories(uid: String, onResult: (List<Category>) -> Unit) {
+    fun getCategories(uid: String, callback: (List<Category>) -> Unit) {
         db.child("users").child(uid).child("categories")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val list = snapshot.children.mapNotNull { child ->
-                        child.getValue(Category::class.java)
-                    }
-                    onResult(list)
-                }
-                override fun onCancelled(error: DatabaseError) {
-                    onResult(emptyList())
-                }
-            })
+            .get()
+            .addOnSuccessListener { snap ->
+                val list = snap.children.mapNotNull { it.getValue(Category::class.java) }
+                callback(list)
+            }
+            .addOnFailureListener { callback(emptyList()) }
     }
 
     // GET SINGLE BY FIREBASE ID
