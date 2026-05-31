@@ -11,13 +11,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.adapter.GoalAdapter
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
+import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
+import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryGoalRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import java.util.concurrent.CountDownLatch
 
 class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
@@ -27,12 +29,24 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
     private lateinit var rgSort: RadioGroup
     private lateinit var tvDateFrom: TextView
     private lateinit var tvDateTo: TextView
+
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
-    private val firebaseCategoryRepository = FirebaseCategoryRepository()
+
+    private lateinit var goalRepo: FirebaseCategoryGoalRepository
+    private lateinit var categoryRepo: FirebaseCategoryRepository
+    private lateinit var expenseRepo: ExpenseRepository
+
+    private var categoryCache: List<Category> = emptyList()
+    private var goalCache: List<CategoryGoal> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        goalRepo = FirebaseCategoryGoalRepository(uid)
+        categoryRepo = FirebaseCategoryRepository()
+        expenseRepo = ExpenseRepository(uid)
 
         rvGoals    = view.findViewById(R.id.rvGoalsList)
         tvNoGoals  = view.findViewById(R.id.tvNoGoals)
@@ -43,7 +57,7 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
         adapter = GoalAdapter(
             items         = emptyList(),
-            onCardClick   = { firebaseId -> navigateToBreakdown(firebaseId) },
+            onCardClick   = { categoryId -> navigateToBreakdown(categoryId) },
             onEditClick   = { goalId -> navigateToUpdate(goalId) },
             onDeleteClick = { goalId -> navigateToDelete(goalId) }
         )
@@ -52,31 +66,30 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
         rvGoals.adapter = adapter
 
         tvDateFrom.setOnClickListener {
-            showDatePicker { year, month, day ->
+            showDatePicker { y, m, d ->
                 val cal = Calendar.getInstance().apply {
-                    set(year, month, day, 0, 0, 0)
+                    set(y, m, d, 0, 0, 0)
                     set(Calendar.MILLISECOND, 0)
                 }
                 dateFrom = cal.timeInMillis
-                tvDateFrom.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
+                tvDateFrom.text = "%02d-%02d-%04d ⌵".format(d, m + 1, y)
                 loadGoals()
             }
         }
 
         tvDateTo.setOnClickListener {
-            showDatePicker { year, month, day ->
+            showDatePicker { y, m, d ->
                 val cal = Calendar.getInstance().apply {
-                    set(year, month, day, 23, 59, 59)
+                    set(y, m, d, 23, 59, 59)
                     set(Calendar.MILLISECOND, 999)
                 }
                 dateTo = cal.timeInMillis
-                tvDateTo.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
+                tvDateTo.text = "%02d-%02d-%04d ⌵".format(d, m + 1, y)
                 loadGoals()
             }
         }
 
         rgSort.setOnCheckedChangeListener { _, _ -> loadGoals() }
-        loadGoals()
 
         btnAdd.setOnClickListener {
             parentFragmentManager.beginTransaction()
@@ -84,112 +97,106 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
                 .addToBackStack(null)
                 .commit()
         }
-    }
 
-    private fun loadGoals() {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val db  = AppDatabase.getDatabase(requireContext())
-
-        lifecycleScope.launch {
-            val allGoals = db.categoryGoalDao().getAllGoals()
-
-            val displayList = allGoals.mapNotNull { goal ->
-                var category: com.dachkaboiz.betterbudget_bestbudget.data.model.Category? = null
-                val latch = CountDownLatch(1)
-                firebaseCategoryRepository.getCategories(uid) { list ->
-                    category = list.firstOrNull { it.firebaseId == goal.categoryID.toString() }
-                    latch.countDown()
-                }
-                latch.await()
-
-                val calFrom = dateFrom?.let { Calendar.getInstance().apply { timeInMillis = it } }
-                val calTo   = dateTo?.let { Calendar.getInstance().apply { timeInMillis = it } }
-                val goalMonth = goal.month
-                val goalYear  = goal.year
-
-                val isAfterStart = calFrom?.let {
-                    val startMonth = it.get(Calendar.MONTH) + 1
-                    val startYear  = it.get(Calendar.YEAR)
-                    (goalYear > startYear) || (goalYear == startYear && goalMonth >= startMonth)
-                } ?: true
-
-                val isBeforeEnd = calTo?.let {
-                    val endMonth = it.get(Calendar.MONTH) + 1
-                    val endYear  = it.get(Calendar.YEAR)
-                    (goalYear < endYear) || (goalYear == endYear && goalMonth <= endMonth)
-                } ?: true
-
-                if (isAfterStart && isBeforeEnd) {
-                    val expenses = db.expenseDao()
-                        .getExpensesByCategory(goal.categoryID) ?: emptyList()
-                    val filteredExpenses = expenses.filter { exp ->
-                        val fromOk = dateFrom?.let { exp.expenseDate >= it } ?: true
-                        val toOk   = dateTo?.let { exp.expenseDate <= it } ?: true
-                        fromOk && toOk
-                    }
-                    val totalSpent = filteredExpenses.sumOf { it.expenseAmount }
-                    Triple(goal, category, totalSpent)
-                } else null
-            }
-
-            val sortedList = when (rgSort.checkedRadioButtonId) {
-                R.id.rbSortLastAdded  -> displayList.sortedByDescending { it.first.categoryGoalID }
-                R.id.rbSortFirstAdded -> displayList.sortedBy { it.first.categoryGoalID }
-                else                  -> displayList.sortedBy { it.second?.categoryName ?: "" }
-            }
-
-            if (sortedList.isEmpty()) {
-                tvNoGoals.visibility = View.VISIBLE
-                rvGoals.visibility   = View.GONE
-            } else {
-                tvNoGoals.visibility = View.GONE
-                rvGoals.visibility   = View.VISIBLE
-                adapter.updateData(sortedList)
-            }
-        }
-    }
-
-    private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
-        val calendar = Calendar.getInstance()
-        DatePickerDialog(
-            requireContext(),
-            { _, year, month, day -> onDateSelected(year, month, day) },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
-    }
-
-    private fun navigateToBreakdown(firebaseId: String) {
-        val fragment = CategoryBreakdownFragment(firebaseId)
-        parentFragmentManager.beginTransaction()
-            .replace(R.id.mainFragment, fragment)
-            .addToBackStack(null)
-            .commit()
-    }
-
-    private fun navigateToUpdate(goalId: Int) {
-        val fragment = UpdateGoalFragment().apply {
-            arguments = Bundle().apply { putInt("goalID", goalId) }
-        }
-        parentFragmentManager.beginTransaction()
-            .replace(R.id.mainFragment, fragment)
-            .addToBackStack(null)
-            .commit()
-    }
-
-    private fun navigateToDelete(goalId: Int) {
-        val fragment = DeleteGoalFragment().apply {
-            arguments = Bundle().apply { putInt("goalID", goalId) }
-        }
-        parentFragmentManager.beginTransaction()
-            .replace(R.id.mainFragment, fragment)
-            .addToBackStack(null)
-            .commit()
+        loadGoals()
     }
 
     override fun onResume() {
         super.onResume()
         loadGoals()
+    }
+
+    private fun loadGoals() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        lifecycleScope.launch {
+
+            // Load categories
+            val categories = categoryRepo.getCategoriesSuspend(uid)
+            categoryCache = categories
+
+            // Load goals
+            val goals = goalRepo.getAllGoals()
+            goalCache = goals
+
+            // Build display list
+            val displayList = mutableListOf<Triple<CategoryGoal, Category?, Double>>()
+
+            for (goal in goals) {
+
+                val category = categoryCache.find { it.firebaseId == goal.categoryId }
+
+                // Filter by month/year range
+                val goalCal = Calendar.getInstance().apply {
+                    set(goal.year, goal.month - 1, 1)
+                }
+
+                val fromOk = dateFrom?.let { goalCal.timeInMillis >= it } ?: true
+                val toOk   = dateTo?.let { goalCal.timeInMillis <= it } ?: true
+
+                if (!fromOk || !toOk) continue
+
+                // Load expenses for this category
+                val expenses = expenseRepo.getExpensesByCategory(goal.categoryId)
+                val totalSpent = expenses.sumOf { it.expenseAmount }
+
+                displayList.add(Triple(goal, category, totalSpent))
+            }
+
+            // Sorting
+            val sorted = when (rgSort.checkedRadioButtonId) {
+                R.id.rbSortLastAdded  -> displayList.sortedByDescending { it.first.goalId }
+                R.id.rbSortFirstAdded -> displayList.sortedBy { it.first.goalId }
+                else -> displayList.sortedBy { it.second?.categoryName ?: "" }
+            }
+
+            if (sorted.isEmpty()) {
+                tvNoGoals.visibility = View.VISIBLE
+                rvGoals.visibility = View.GONE
+            } else {
+                tvNoGoals.visibility = View.GONE
+                rvGoals.visibility = View.VISIBLE
+                adapter.updateData(sorted)
+            }
+        }
+    }
+
+    private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
+        val cal = Calendar.getInstance()
+        DatePickerDialog(
+            requireContext(),
+            { _, y, m, d -> onDateSelected(y, m, d) },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    private fun navigateToBreakdown(categoryId: String) {
+        val fragment = CategoryBreakdownFragment(categoryId)
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.mainFragment, fragment)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun navigateToUpdate(goalId: String) {
+        val fragment = UpdateGoalFragment().apply {
+            arguments = Bundle().apply { putString("goalId", goalId) }
+        }
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.mainFragment, fragment)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun navigateToDelete(goalId: String) {
+        val fragment = DeleteGoalFragment().apply {
+            arguments = Bundle().apply { putString("goalId", goalId) }
+        }
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.mainFragment, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 }

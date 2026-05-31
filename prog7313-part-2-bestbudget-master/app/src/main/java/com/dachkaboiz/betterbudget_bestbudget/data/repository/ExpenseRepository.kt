@@ -1,39 +1,81 @@
 package com.dachkaboiz.betterbudget_bestbudget.data.repository
 
-import com.dachkaboiz.betterbudget_bestbudget.data.dao.ExpenseDao
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
+import com.google.firebase.database.FirebaseDatabase
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
-class ExpenseRepository (private val expenseDao: ExpenseDao){
+class ExpenseRepository(
+    private val uid: String
+) {
 
-    suspend fun insertExpense(expense: Expense){
-        expenseDao.insertExpense(expense)
+    private val db = FirebaseDatabase.getInstance().reference
+    private val expensesRef = db.child("users").child(uid).child("expenses")
+    fun generateExpenseId(): String = expensesRef.push().key!!
+
+    suspend fun insertExpense(expense: Expense) = suspendCoroutine<Unit> { cont ->
+        expensesRef.child(expense.expenseID)
+            .setValue(expense)
+            .addOnSuccessListener { cont.resume(Unit) }
+            .addOnFailureListener { cont.resume(Unit) }
+    }
+    suspend fun getExpenseById(expenseId: String): Expense? = suspendCoroutine { cont ->
+        expensesRef
+            .child(expenseId)
+            .get()
+            .addOnSuccessListener { snap ->
+                cont.resume(snap.getValue(Expense::class.java))
+            }
+            .addOnFailureListener {
+                cont.resume(null)
+            }
+    }
+    suspend fun getExpensesByUser(email: String): List<Expense> =
+        suspendCoroutine { cont ->
+            expensesRef
+                .orderByChild("userEmail")
+                .equalTo(email)
+                .get()
+                .addOnSuccessListener { snap ->
+                    val list = snap.children.mapNotNull { it.getValue(Expense::class.java) }
+                    cont.resume(list)
+                }
+                .addOnFailureListener {
+                    cont.resume(emptyList())
+                }
+        }
+
+
+    suspend fun updateExpense(expense: Expense) = suspendCoroutine<Unit> { cont ->
+        expensesRef
+            .child(expense.expenseID)
+            .setValue(expense)
+            .addOnSuccessListener { cont.resume(Unit) }
+            .addOnFailureListener { cont.resume(Unit) }
     }
 
-    suspend fun updateExpense(expense: Expense){
-        expenseDao.updateExpense(expense)
+    suspend fun deleteExpense(expenseId: String) = suspendCoroutine<Unit> { cont ->
+        expensesRef
+            .child(expenseId)
+            .removeValue()
+            .addOnSuccessListener { cont.resume(Unit) }
+            .addOnFailureListener { cont.resume(Unit) }
     }
+    suspend fun getExpensesByCategory(categoryId: String): List<Expense> =
+        suspendCoroutine { cont ->
+            expensesRef.orderByChild("categoryId").equalTo(categoryId).get()
+                .addOnSuccessListener { snap ->
+                    cont.resume(snap.children.mapNotNull { it.getValue(Expense::class.java) })
+                }
+                .addOnFailureListener { cont.resume(emptyList()) }
+        }
+    suspend fun deleteExpense(expense: Expense) =
+        suspendCoroutine<Unit> { cont ->
+            expensesRef.child(expense.expenseID)
+                .removeValue()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
 
-    suspend fun deleteExpense(expense: Expense){
-        expenseDao.deleteExpense(expense)
-    }
-
-    suspend fun getExpenseByUser(email: String): List<Expense>{
-        return expenseDao.getExpensesByUser(email)
-    }
-
-    suspend fun getExpensesByCategory(categoryID: Int): List<Expense> {
-        return expenseDao.getExpensesByCategory(categoryID)
-    }
-
-    suspend fun getExpensesBySubCategory(subCategoryID: Int): List<Expense> {
-        return expenseDao.getExpensesBySubCategory(subCategoryID)
-    }
-
-    suspend fun getExpenseById(expenseID: Int): Expense? {
-        return expenseDao.getExpenseById(expenseID)
-    }
-
-    suspend fun getTotalSpentByCategory(categoryID: Int, startDate: Long, endDate: Long): Double? {
-        return expenseDao.getTotalSpentByCategory(categoryID, startDate, endDate)
-    }
 }
+

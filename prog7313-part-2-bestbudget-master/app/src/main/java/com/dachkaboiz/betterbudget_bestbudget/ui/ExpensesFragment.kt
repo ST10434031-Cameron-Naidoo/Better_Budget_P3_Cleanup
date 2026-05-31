@@ -13,12 +13,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.adapter.ExpenseAdapter
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.SubCategoryRepository
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -35,14 +33,14 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
     private lateinit var rgSortOrder: RadioGroup
     private lateinit var tvDateFrom: TextView
     private lateinit var tvDateTo: TextView
+
     private lateinit var repository: ExpenseRepository
-    private lateinit var subCategoryRepository: SubCategoryRepository
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
 
-    private var categoryCache: List<Category>       = emptyList()
+    private var categoryCache: List<Category> = emptyList()
 
     private var dateFrom: Long? = null
-    private var dateTo: Long?   = null
+    private var dateTo: Long? = null
 
     private val currentUserEmail: String by lazy {
         requireActivity().getSharedPreferences("auth", 0).getString("email", "") ?: ""
@@ -51,10 +49,8 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        val db  = AppDatabase.getDatabase(requireContext())
-        repository            = ExpenseRepository(db.expenseDao())
-//        subCategoryRepository = SubCategoryRepository(db.subCategoryDao())
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        repository = ExpenseRepository(uid)
 
         rvExpenses   = view.findViewById(R.id.rvExpenses)
         tvEmptyState = view.findViewById(R.id.tvEmptyState)
@@ -67,37 +63,28 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
             onItemLongClick = { },
             onEditClick     = { expense -> navigateToEdit(expense) },
             onDeleteClick   = { expense -> navigateToDelete(expense) },
+
+            // Firebase category resolver (String → String)
             categoryNameResolver = { categoryId ->
-                // TODO: once expense owner migrates categoryID to String firebaseId,
-                // match on firebaseId directly instead of converting Int to String
-                val cat = categoryCache.find { it.firebaseId == categoryId.toString() }
+                val cat = categoryCache.find { it.firebaseId.equals(categoryId) }
                 "${cat?.categoryIcon ?: "💰"} ${cat?.categoryName ?: "Category $categoryId"}"
-            },
-//            subCategoryNameResolver = { subCategoryId ->
-//                val sub = subCategoryCache.find { it.subCategoryID == subCategoryId }
-//                "${sub?.subCategoryIcon ?: ""} ${sub?.subCategoryName ?: "Subcategory $subCategoryId"}"
-//            }
-      )
+            }
+        )
+
         rvExpenses.layoutManager = LinearLayoutManager(requireContext())
         rvExpenses.adapter = adapter
 
-        if (uid != null) {
-            firebaseCategoryRepository.getCategories(uid) { list ->
-                categoryCache = list
-                lifecycleScope.launch {
-//                    subCategoryCache = categoryCache.flatMap {
-//                        // TODO: subcategory owner still uses Int parentCategoryID
-//                        // pass 0 until they migrate
-//                        subCategoryRepository.getSubCategoriesByCategory(0)
-//                    }
-                    loadExpenses()
-                }
-            }
+        firebaseCategoryRepository.getCategories(uid) { list ->
+            categoryCache = list
+            lifecycleScope.launch { loadExpenses() }
         }
 
         tvDateFrom.setOnClickListener {
             showDatePicker { year, month, day ->
-                val cal = Calendar.getInstance().apply { set(year, month, day, 0, 0, 0); set(Calendar.MILLISECOND, 0) }
+                val cal = Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
                 dateFrom = cal.timeInMillis
                 tvDateFrom.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
                 loadExpenses()
@@ -106,7 +93,10 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
 
         tvDateTo.setOnClickListener {
             showDatePicker { year, month, day ->
-                val cal = Calendar.getInstance().apply { set(year, month, day, 23, 59, 59); set(Calendar.MILLISECOND, 999) }
+                val cal = Calendar.getInstance().apply {
+                    set(year, month, day, 23, 59, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
                 dateTo = cal.timeInMillis
                 tvDateTo.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
                 loadExpenses()
@@ -128,26 +118,23 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         firebaseCategoryRepository.getCategories(uid) { list ->
             categoryCache = list
-            lifecycleScope.launch {
-//                subCategoryCache = categoryCache.flatMap {
-//                     TODO: subcategory owner still uses Int parentCategoryID
-//                    subCategoryRepository.getSubCategoriesByCategory(0)
-//                }
-                loadExpenses()
-            }
+            lifecycleScope.launch { loadExpenses() }
         }
     }
 
     private fun loadExpenses() {
         lifecycleScope.launch {
-            var expenses = repository.getExpenseByUser(currentUserEmail)
+            var expenses = repository.getExpensesByUser(currentUserEmail)
+
             val from = dateFrom
             val to   = dateTo
 
             if (from != null && to != null && from > to) {
                 Toast.makeText(requireContext(), "FROM date cannot be after TO date — clearing filters", Toast.LENGTH_SHORT).show()
-                dateFrom = null; dateTo = null
-                tvDateFrom.text = "Select ⌵"; tvDateTo.text = "Select ⌵"
+                dateFrom = null
+                dateTo = null
+                tvDateFrom.text = "Select ⌵"
+                tvDateTo.text = "Select ⌵"
             } else {
                 if (from != null) expenses = expenses.filter { it.expenseDate >= from }
                 if (to   != null) expenses = expenses.filter { it.expenseDate <= to }
@@ -156,49 +143,76 @@ class ExpensesFragment : Fragment(R.layout.fragment_expenses) {
             val sorted = when (rgSortOrder.checkedRadioButtonId) {
                 R.id.rbSortFirstAdded -> expenses.sortedBy { it.expenseID }
                 R.id.rbSortLastAdded  -> expenses.sortedByDescending { it.expenseID }
-                // TODO: once expense owner migrates, match on firebaseId directly
                 else -> expenses.sortedBy { exp ->
-                    categoryCache.find { it.firebaseId == exp.categoryID.toString() }?.categoryName ?: ""
+                    categoryCache.find { it.firebaseId == exp.categoryId }?.categoryName ?: ""
                 }
             }
 
             adapter.submitList(sorted.toMutableList())
-            if (sorted.isEmpty()) { tvEmptyState.visibility = View.VISIBLE; rvExpenses.visibility = View.GONE }
-            else { tvEmptyState.visibility = View.GONE; rvExpenses.visibility = View.VISIBLE }
+
+            if (sorted.isEmpty()) {
+                tvEmptyState.visibility = View.VISIBLE
+                rvExpenses.visibility = View.GONE
+            } else {
+                tvEmptyState.visibility = View.GONE
+                rvExpenses.visibility = View.VISIBLE
+            }
         }
     }
 
     private fun navigateToEdit(expense: Expense) {
         val fragment = EditExpenseFragment()
-        fragment.arguments = Bundle().apply { putInt("expenseId", expense.expenseID) }
-        parentFragmentManager.beginTransaction().replace(R.id.mainFragment, fragment).addToBackStack(null).commit()
+        fragment.arguments = Bundle().apply {
+            putString("expenseId", expense.expenseID)
+        }
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.mainFragment, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun navigateToDelete(expense: Expense) {
         val fragment = DeleteExpenseFragment()
-        fragment.arguments = Bundle().apply { putInt("expenseId", expense.expenseID) }
-        parentFragmentManager.beginTransaction().replace(R.id.mainFragment, fragment).addToBackStack(null).commit()
+        fragment.arguments = Bundle().apply {
+            putString("expenseId", expense.expenseID)
+        }
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.mainFragment, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun showDatePicker(onDateSelected: (Int, Int, Int) -> Unit) {
         val calendar = Calendar.getInstance()
-        DatePickerDialog(requireContext(), { _, year, month, day -> onDateSelected(year, month, day) },
-            calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+        DatePickerDialog(
+            requireContext(),
+            { _, year, month, day -> onDateSelected(year, month, day) },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
     }
 
     private fun showDetailDialog(expense: Expense) {
         val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-        // TODO: once expense owner migrates, match on firebaseId directly
-        val catName = categoryCache.find { it.firebaseId == expense.categoryID.toString() }?.categoryName ?: "Category ${expense.categoryID}"
-//     val subName = expense.subCategoryID?.let { subId -> subCategoryCache.find { it.subCategoryID == subId }?.subCategoryName }
+
+        val catName = categoryCache.find { it.firebaseId == expense.categoryId }?.categoryName
+            ?: "Category ${expense.categoryId}"
+
         val message = buildString {
             append("Category: $catName\n")
-//            if (subName != null) append("Subcategory: $subName\n")
             append("Amount: R %.2f\n".format(expense.expenseAmount))
             append("Date: ${dateFormat.format(Date(expense.expenseDate))}\n")
-            if (!expense.expenseDescription.isNullOrBlank()) append("Description: ${expense.expenseDescription}\n")
-            if (expense.imageUri != null) append("Photo: Attached")
+            if (!expense.expenseDescription.isNullOrBlank())
+                append("Description: ${expense.expenseDescription}\n")
+            if (expense.imageUri != null)
+                append("Photo: Attached")
         }
-        AlertDialog.Builder(requireContext()).setTitle("Expense Details").setMessage(message).setPositiveButton("Close", null).show()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Expense Details")
+            .setMessage(message)
+            .setPositiveButton("Close", null)
+            .show()
     }
 }

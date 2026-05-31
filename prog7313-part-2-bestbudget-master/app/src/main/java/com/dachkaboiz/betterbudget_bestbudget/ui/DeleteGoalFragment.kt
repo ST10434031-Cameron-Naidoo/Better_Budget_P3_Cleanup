@@ -8,23 +8,28 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
+import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryGoalRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class DeleteGoalFragment : Fragment(R.layout.fragment_delete_goal) {
 
+    private lateinit var goalRepo: FirebaseCategoryGoalRepository
+    private val categoryRepo = FirebaseCategoryRepository()
+
     private var targetGoal: CategoryGoal? = null
-    private val firebaseCategoryRepository = FirebaseCategoryRepository()
+    private var categoryCache: List<Category> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val db     = AppDatabase.getDatabase(requireContext())
-        val uid    = FirebaseAuth.getInstance().currentUser?.uid
-        val goalId = arguments?.getInt("goalID") ?: -1
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        goalRepo = FirebaseCategoryGoalRepository(uid)
+
+        val goalId = arguments?.getString("goalId") ?: ""
 
         val tvCategory = view.findViewById<TextView>(R.id.tvDeleteGoalCategory)
         val tvMax      = view.findViewById<TextView>(R.id.tvDeleteGoalMax)
@@ -33,32 +38,29 @@ class DeleteGoalFragment : Fragment(R.layout.fragment_delete_goal) {
         val btnConfirm = view.findViewById<Button>(R.id.btnDeleteGoalConfirm)
         val btnCancel  = view.findViewById<Button>(R.id.btnDeleteGoalCancel)
 
-        lifecycleScope.launch {
-            targetGoal = db.categoryGoalDao().getGoalById(goalId)
-            targetGoal?.let { goal ->
-                tvMax.text    = "Limit: R${String.format("%.2f", goal.maxGoal ?: 0.0)}"
-                tvMin.text    = "Min Target: R${String.format("%.2f", goal.minGoal ?: 0.0)}"
-                tvPeriod.text = "Period: ${goal.month} - ${goal.year}"
+        // Load categories first
+        categoryRepo.getCategories(uid) { list ->
+            categoryCache = list
+        }
 
-                if (uid != null) {
-                    firebaseCategoryRepository.getCategories(uid) { list ->
-                        val category = list.firstOrNull {
-                            it.firebaseId == goal.categoryID.toString()
-                        }
-                        requireActivity().runOnUiThread {
-                            tvCategory.text = category?.categoryName ?: "Unknown Category"
-                        }
-                    }
-                } else {
-                    tvCategory.text = "Unknown Category"
-                }
+        // Load goal from Firebase
+        lifecycleScope.launch {
+            targetGoal = goalRepo.getGoalById(goalId)
+
+            targetGoal?.let { goal ->
+                val category = categoryCache.find { it.firebaseId == goal.categoryId }
+
+                tvCategory.text = category?.categoryName ?: "Unknown Category"
+                tvMax.text      = "Limit: R${String.format("%.2f", goal.maxGoal ?: 0.0)}"
+                tvMin.text      = "Min Target: R${String.format("%.2f", goal.minGoal ?: 0.0)}"
+                tvPeriod.text   = "Period: ${goal.month} - ${goal.year}"
             }
         }
 
         btnConfirm.setOnClickListener {
             targetGoal?.let { goal ->
                 lifecycleScope.launch {
-                    db.categoryGoalDao().deleteCategoryGoal(goal)
+                    goalRepo.deleteGoal(goal.goalId)
                     Toast.makeText(requireContext(), "Goal deleted successfully", Toast.LENGTH_SHORT).show()
                     parentFragmentManager.popBackStack()
                 }
