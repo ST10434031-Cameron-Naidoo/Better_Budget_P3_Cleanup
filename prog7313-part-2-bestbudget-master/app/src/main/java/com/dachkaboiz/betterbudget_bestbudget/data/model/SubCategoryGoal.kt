@@ -1,10 +1,5 @@
 package com.dachkaboiz.betterbudget_bestbudget.data.model
 
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-
 data class SubCategoryGoal(
     val subCategoryID: String = "",
     val categoryID: String = "",
