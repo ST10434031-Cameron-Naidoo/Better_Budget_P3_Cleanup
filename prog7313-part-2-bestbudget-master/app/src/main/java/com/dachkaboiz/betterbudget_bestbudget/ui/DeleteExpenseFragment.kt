@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
@@ -22,21 +21,18 @@ class DeleteExpenseFragment : Fragment(R.layout.fragment_delete_expense_v2) {
 
     private lateinit var repository: ExpenseRepository
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
-    private var expenseToDelete: Expense? = null
 
-    private val currentUserEmail: String by lazy {
-        requireActivity().getSharedPreferences("auth", 0).getString("email", "") ?: ""
-    }
+    private var expenseToDelete: Expense? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val db        = AppDatabase.getDatabase(requireContext())
-        val uid       = FirebaseAuth.getInstance().currentUser?.uid
-        repository    = ExpenseRepository(db.expenseDao())
-        val expenseId = arguments?.getInt("expenseId", -1) ?: -1
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        repository = ExpenseRepository(uid)
 
-        if (expenseId == -1) {
+        val expenseId = arguments?.getString("expenseId") ?: ""
+
+        if (expenseId.isBlank()) {
             Toast.makeText(requireContext(), "No expense to delete.", Toast.LENGTH_SHORT).show()
             parentFragmentManager.popBackStack()
             return
@@ -49,42 +45,45 @@ class DeleteExpenseFragment : Fragment(R.layout.fragment_delete_expense_v2) {
         val tvDescription = view.findViewById<TextView>(R.id.tvDeleteExpenseDescription)
         val btnCancel     = view.findViewById<Button>(R.id.btnDeleteExpenseCancel)
         val btnConfirm    = view.findViewById<Button>(R.id.btnDeleteExpenseConfirm)
-        val dateFormat    = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
 
+        val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+
+        // Load expense from Firebase
         lifecycleScope.launch {
             val expense = repository.getExpenseById(expenseId)
+
             if (expense == null) {
                 Toast.makeText(requireContext(), "Expense not found.", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
                 return@launch
             }
+
             expenseToDelete = expense
+
             tvAmount.text      = "R %.2f".format(expense.expenseAmount)
-            tvSubCategory.text = "Subcategory: ${expense.subCategoryID?.toString() ?: "—"}"
+            tvSubCategory.text = "Subcategory: ${expense.subCategoryId ?: "—"}"
             tvDate.text        = "Date: ${dateFormat.format(Date(expense.expenseDate))}"
             tvDescription.text = "Description: ${expense.expenseDescription ?: "—"}"
 
-            // TODO: once expense owner migrates categoryID to String firebaseId,
-            // match on that field directly instead of converting Int to String
-            if (uid != null) {
-                firebaseCategoryRepository.getCategories(uid) { list ->
-                    val category = list.firstOrNull { it.firebaseId == expense.categoryID.toString() }
-                    requireActivity().runOnUiThread {
-                        tvCategory.text = category?.categoryName ?: "Category ${expense.categoryID}"
-                    }
+            // Load category name from Firebase
+            firebaseCategoryRepository.getCategories(uid) { list ->
+                val category = list.firstOrNull { it.firebaseId == expense.categoryId }
+                requireActivity().runOnUiThread {
+                    tvCategory.text = category?.categoryName ?: "Category ${expense.categoryId}"
                 }
-            } else {
-                tvCategory.text = "Category ${expense.categoryID}"
             }
         }
 
-        btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
+        btnCancel.setOnClickListener {
+            parentFragmentManager.popBackStack()
+        }
 
         btnConfirm.setOnClickListener {
             val expense = expenseToDelete ?: run {
                 Toast.makeText(requireContext(), "No expense loaded yet.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+
             lifecycleScope.launch {
                 repository.deleteExpense(expense)
                 Toast.makeText(requireContext(), "Expense deleted.", Toast.LENGTH_SHORT).show()

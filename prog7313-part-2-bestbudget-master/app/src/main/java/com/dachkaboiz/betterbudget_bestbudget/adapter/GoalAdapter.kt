@@ -14,8 +14,8 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
 class GoalAdapter(
     private var items: List<Triple<CategoryGoal, Category?, Double>>,
     private val onCardClick: (String) -> Unit,   // String firebaseId, was Int categoryID
-    private val onEditClick: (Int) -> Unit,
-    private val onDeleteClick: (Int) -> Unit
+    private val onEditClick: (String) -> Unit,
+    private val onDeleteClick: (String) -> Unit
 ) : RecyclerView.Adapter<GoalAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -76,11 +76,11 @@ class GoalAdapter(
         // Edit and delete still use Room integer goal ID
         // These will be updated when CategoryGoal owner migrates
         holder.ivEdit.setOnClickListener {
-            onEditClick(goal.categoryGoalID)
+            onEditClick(goal.goalId)
         }
 
         holder.ivDelete.setOnClickListener {
-            onDeleteClick(goal.categoryGoalID)
+            onDeleteClick(goal.goalId)
         }
     }
 

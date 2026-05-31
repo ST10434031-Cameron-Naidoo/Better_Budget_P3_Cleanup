@@ -23,8 +23,8 @@ class ExpenseAdapter(
     private val onItemLongClick: (Expense) -> Unit,
     private val onEditClick: (Expense) -> Unit = {},
     private val onDeleteClick: (Expense) -> Unit = {},
-    private val categoryNameResolver: ((Int) -> String)? = null,
-    private val subCategoryNameResolver: ((Int) -> String)? = null
+    private val categoryNameResolver: ((String) -> String)? = null,
+    private val subCategoryNameResolver: ((String) -> String)? = null
 ) : ListAdapter<Expense, ExpenseAdapter.ExpenseViewHolder>(ExpenseDiffCallback()) {
 
     inner class ExpenseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -49,8 +49,8 @@ class ExpenseAdapter(
         val expense = getItem(position)
 
         // Category name and icon — resolver returns "emoji name"
-        val resolved = categoryNameResolver?.invoke(expense.categoryID)
-            ?: "💰 Category ${expense.categoryID}"
+        val resolved = categoryNameResolver?.invoke(expense.categoryId)
+            ?: "💰 Category ${expense.categoryId}"
         val spaceIndex = resolved.indexOf(' ')
         if (spaceIndex != -1) {
             holder.tvCategoryIcon.text = resolved.substring(0, spaceIndex)
@@ -63,10 +63,10 @@ class ExpenseAdapter(
 
 
         // Subcategory
-        if (expense.subCategoryID != null) {
+        if (expense.subCategoryId != null) {
             holder.tvSubCategoryName.visibility = View.VISIBLE
-            holder.tvSubCategoryName.text = subCategoryNameResolver?.invoke(expense.subCategoryID)
-                ?: "Subcategory ${expense.subCategoryID}"
+            holder.tvSubCategoryName.text = subCategoryNameResolver?.invoke(expense.subCategoryId)
+                ?: "Subcategory ${expense.subCategoryId}"
         } else {
             holder.tvSubCategoryName.visibility = View.GONE
         }
