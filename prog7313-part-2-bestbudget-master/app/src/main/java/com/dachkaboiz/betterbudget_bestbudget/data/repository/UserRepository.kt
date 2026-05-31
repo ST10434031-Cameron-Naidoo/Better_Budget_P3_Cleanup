@@ -22,9 +22,7 @@ class UserRepository(private val userDao: UserDao) {
         userDao.updateUser(user)
     }
 
-    suspend fun deleteUser(user: User) {
-        userDao.deleteUserByEmail(user.email)
-    }
+
 
     suspend fun getUserByEmail(email: String): User? {
         return userDao.getUserByEmail(email)
@@ -38,8 +36,5 @@ class UserRepository(private val userDao: UserDao) {
         return user != null
     }
 
-
-    suspend fun getAllUsers(): List<User> {
-        return userDao.getAllUsers()
-    }
+    
 }

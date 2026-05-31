@@ -13,6 +13,7 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.SubCategoryRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
@@ -24,9 +25,14 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
     private lateinit var repository: ExpenseRepository
     private val firebaseCategoryRepository = FirebaseCategoryRepository()
+    private lateinit var subCategoryRepository: SubCategoryRepository
+
+    private lateinit var spinnerSubCategory: Spinner
 
     private var editingExpenseId: String? = null
     private var selectedCategoryFirebaseId: String = ""
+
+    private var firebaseSubCategoryID: String =""
     private var categoryList: List<Category> = emptyList()
 
     private var currentImageUri: Uri? = null
@@ -91,10 +97,13 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
         repository = ExpenseRepository(uid)
+        subCategoryRepository = SubCategoryRepository(uid)
+
 
         editingExpenseId = arguments?.getString("expenseId")
 
         val spinnerCategory = view.findViewById<Spinner>(R.id.spinnerExpenseCategory)
+        spinnerSubCategory = view.findViewById<Spinner>(R.id.spinnerExpenseSubCategory)
         val etDay = view.findViewById<EditText>(R.id.etExpenseDay)
         val etMonth = view.findViewById<EditText>(R.id.etExpenseMonth)
         val etYear = view.findViewById<EditText>(R.id.etExpenseYear)
@@ -121,6 +130,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
         firebaseCategoryRepository.getCategories(uid) { list ->
             categoryList = list
+
             if (categoryList.isEmpty()) {
                 requireActivity().runOnUiThread {
                     Toast.makeText(requireContext(), "Please create a category first.", Toast.LENGTH_LONG).show()
@@ -130,20 +140,32 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
             }
 
             val categoryNames = categoryList.map { it.categoryName }
+
             requireActivity().runOnUiThread {
-                spinnerCategory.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, categoryNames)
+                spinnerCategory.adapter = ArrayAdapter(
+                    requireContext(),
+                    android.R.layout.simple_spinner_dropdown_item,
+                    categoryNames
+                )
             }
 
+            // Default category
             selectedCategoryFirebaseId = categoryList[0].firebaseId
+
+            // Load subcategories for the default category
+            loadSubCategoriesFor(selectedCategoryFirebaseId)
 
             spinnerCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(parent: AdapterView<*>, v: View?, position: Int, id: Long) {
                     selectedCategoryFirebaseId = categoryList[position].firebaseId
+                    loadSubCategoriesFor(selectedCategoryFirebaseId)
                 }
                 override fun onNothingSelected(parent: AdapterView<*>) {}
             }
+        }
 
-            lifecycleScope.launch {
+
+        lifecycleScope.launch {
                 if (editingExpenseId != null) {
                     val expense = repository.getExpenseById(editingExpenseId!!)
                     if (expense != null) {
@@ -186,7 +208,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                     expenseID = id,
                     userEmail = currentUserEmail,
                     categoryId = selectedCategoryFirebaseId,
-                    subCategoryId = null,
+                    subCategoryId = if (firebaseSubCategoryID.isBlank()) null else firebaseSubCategoryID,
                     expenseAmount = amount,
                     expenseDate = cal.timeInMillis,
                     expenseDescription = description.ifEmpty { null },
@@ -208,5 +230,43 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                 }
             }
         }
+    private fun loadSubCategoriesFor(categoryId: String) {
+        lifecycleScope.launch {
+            val subList = subCategoryRepository.getSubCategories(categoryId)
+
+            if (subList.isEmpty()) {
+                requireActivity().runOnUiThread {
+                    spinnerSubCategory.adapter = ArrayAdapter(
+                        requireContext(),
+                        android.R.layout.simple_spinner_dropdown_item,
+                        listOf("None")
+                    )
+                    firebaseSubCategoryID = ""   // no subcategory selected
+                }
+                return@launch
+            }
+
+            val names = subList.map { it.subCategoryName }
+
+            requireActivity().runOnUiThread {
+                spinnerSubCategory.adapter = ArrayAdapter(
+                    requireContext(),
+                    android.R.layout.simple_spinner_dropdown_item,
+                    names
+                )
+            }
+
+            firebaseSubCategoryID = subList[0].firebaseId
+
+            spinnerSubCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>, v: View?, position: Int, id: Long) {
+                    firebaseSubCategoryID = subList[position].firebaseId
+                }
+                override fun onNothingSelected(parent: AdapterView<*>) {}
+            }
+        }
     }
+
+
 }
+
