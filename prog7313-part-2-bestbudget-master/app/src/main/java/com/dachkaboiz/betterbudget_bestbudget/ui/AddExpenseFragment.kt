@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
+import com.dachkaboiz.betterbudget_bestbudget.data.model.AutomatedExpense
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.AutomatedExpenseRepository
@@ -134,6 +135,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 
         btnGallery.setOnClickListener {
             pickImageLauncher.launch(arrayOf("image/*"))
+        }
 
             // ── Default date to today ─────────────────────────────────────────
             val cal = Calendar.getInstance()
@@ -141,31 +143,55 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
             etMonth.setText((cal.get(Calendar.MONTH) + 1).toString().padStart(2, '0'))
             etYear.setText(cal.get(Calendar.YEAR).toString())
 
-
-
-            // ── Automation toggle ─────────────────────────────────────────────────────
-        val switchAutomate   = view.findViewById<Switch>(R.id.switchAutomate)
-        val layoutAutomation = view.findViewById<LinearLayout>(R.id.layoutAutomationOptions)
-        val rgFrequency      = view.findViewById<RadioGroup>(R.id.rgFrequency)
-
-        switchAutomate.setOnCheckedChangeListener { _, checked ->
-            isAutomated = checked
-            layoutAutomation.visibility = if (checked) View.VISIBLE else View.GONE
-        }
-
-        rgFrequency.setOnCheckedChangeListener { _, checkedId ->
-            selectedFrequencyUnit = when (checkedId) {
-                R.id.rbFreqDay   -> "DAY"
-                R.id.rbFreqWeek  -> "WEEK"
-                R.id.rbFreqMonth -> "MONTH"
-                R.id.rbFreqYear  -> "YEAR"
-                else             -> "MONTH"
+            // ── Automation: radio group listener ──────────────────────────────
+            // When user selects a frequency, store it and update the unit label.
+            // Selecting none (all deselected) means no automation — handled by
+            // selectedFrequencyUnit staying null.
+            rgFrequency.setOnCheckedChangeListener { _, checkedId ->
+                selectedFrequencyUnit = when (checkedId) {
+                    R.id.rbDay   -> "DAY"
+                    R.id.rbWeek  -> "WEEK"
+                    R.id.rbMonth -> "MONTH"
+                    R.id.rbYear  -> "YEAR"
+                    else         -> null
+                }
+                // Update the label next to the multiplier field so the user
+                // sees e.g. "3  months" as they type
+                tvFrequencyUnit.text = when (selectedFrequencyUnit) {
+                    "DAY"   -> "day(s)"
+                    "WEEK"  -> "week(s)"
+                    "MONTH" -> "month(s)"
+                    "YEAR"  -> "year(s)"
+                    else    -> "—"
+                }
             }
-        }
+
+
+
+
+//            // ── Automation toggle ─────────────────────────────────────────────────────
+//        val switchAutomate   = view.findViewById<Switch>(R.id.switchAutomate)
+//        val layoutAutomation = view.findViewById<LinearLayout>(R.id.layoutAutomationOptions)
+//        val rgFrequency      = view.findViewById<RadioGroup>(R.id.rgFrequency)
+//
+//        switchAutomate.setOnCheckedChangeListener { _, checked ->
+//            isAutomated = checked
+//            layoutAutomation.visibility = if (checked) View.VISIBLE else View.GONE
+//        }
+//
+//        rgFrequency.setOnCheckedChangeListener { _, checkedId ->
+//            selectedFrequencyUnit = when (checkedId) {
+//                R.id.rbFreqDay   -> "DAY"
+//                R.id.rbFreqWeek  -> "WEEK"
+//                R.id.rbFreqMonth -> "MONTH"
+//                R.id.rbFreqYear  -> "YEAR"
+//                else             -> "MONTH"
+//            }
+//        }
 
         parentFragmentManager.setFragmentResultListener("camera_request", viewLifecycleOwner) { _, bundle ->
             bundle.getString("image_uri")?.let { currentImageUri = Uri.parse(it); updatePhotoUI() }
->>>>>>> Stashed changes
+
         }
 
         btnCancel.setOnClickListener {
@@ -250,31 +276,89 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                     automationMultiplier = null
                 )
 
-                lifecycleScope.launch {
-                    if (editingExpenseId != null)
-                        repository.updateExpense(expense)
-                    else
-                        repository.insertExpense(expense)
+//                lifecycleScope.launch {
+//                    if (editingExpenseId != null)
+//                        repository.updateExpense(expense)
+//                    else
+//                        repository.insertExpense(expense)
+//
+//
+//
+//
+//
+//                    Toast.makeText(requireContext(), "Expense saved!", Toast.LENGTH_SHORT).show()
+//                    parentFragmentManager.popBackStack()
+//                }
 
-                    Toast.makeText(requireContext(), "Expense saved!", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    // 1. Save the expense (insert or update)
+                    if (editingExpenseId != null) repository.updateExpense(expense)
+                    else repository.insertExpense(expense)
+
+                    // 2. Schedule automation only on NEW expenses,
+                    //    only if the user picked a frequency
+                    if (editingExpenseId == null && selectedFrequencyUnit != null) {
+                        val nextRun = AutomationScheduler.calculateNextRunDate(
+                            fromDate   = expense.expenseDate,
+                            unit       = selectedFrequencyUnit!!,
+                            multiplier = selectedMultiplier
+                        )
+
+                        val automated = AutomatedExpense(
+                            categoryFirebaseId = selectedCategoryFirebaseId,
+                            amount = expense.expenseAmount,
+                            description = expense.expenseDescription,
+                            imageUri = expense.imageUri,
+                            frequencyUnit = selectedFrequencyUnit!!,
+                            frequencyMultiplier = selectedMultiplier,
+                            nextRunDate = nextRun,
+                            userEmail = currentUserEmail
+                        )
+
+                        automatedRepo.insertAutomatedExpense(automated) { success ->
+                            if (!isAdded) return@insertAutomatedExpense
+                            requireActivity().runOnUiThread {
+                                val repeatLabel = when (selectedFrequencyUnit) {
+                                    "DAY"   -> "daily"
+                                    "WEEK"  -> "weekly"
+                                    "MONTH" -> "monthly"
+                                    "YEAR"  -> "yearly"
+                                    else    -> "automatically"
+                                }
+                                val msg = if (success)
+                                    "Expense added and will repeat $repeatLabel every $selectedMultiplier!"
+                                else
+                                    "Expense saved, but automation failed to schedule."
+                                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } else {
+                        // Plain save confirmation
+                        if (!isAdded) return@launch
+                        requireActivity().runOnUiThread {
+                            val msg = if (editingExpenseId != null) "Expense updated!" else "Expense added!"
+                            Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
                     parentFragmentManager.popBackStack()
                 }
             }
         }
-    }
-<<<<<<< Updated upstream
+
+
 }
-=======
 
-    private suspend fun saveExpense(expense: Expense, customMessage: String?) {
-        if (editingExpenseId != null) repository.updateExpense(expense)
-        else repository.insertExpense(expense)
 
-        
-
-        Toast.makeText(requireContext(), customMessage ?: if (editingExpenseId != null) "Expense updated!" else "Expense added!", Toast.LENGTH_SHORT).show()
-        pendingExpense = null
-        parentFragmentManager.popBackStack()
-    }
+//    private suspend fun saveExpense(expense: Expense, customMessage: String?) {
+//        if (editingExpenseId != null) repository.updateExpense(expense)
+//        else repository.insertExpense(expense)
+//
+//
+//
+//        Toast.makeText(requireContext(), customMessage ?: if (editingExpenseId != null) "Expense updated!" else "Expense added!", Toast.LENGTH_SHORT).show()
+//        pendingExpense = null
+//        parentFragmentManager.popBackStack()
+//    }
 }
->>>>>>> Stashed changes
+
