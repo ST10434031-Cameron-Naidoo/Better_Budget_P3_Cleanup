@@ -6,10 +6,15 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Category
+import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryGoalRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
 
@@ -23,11 +28,15 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
             .getSharedPreferences("auth", 0)
             .getString("email", "") ?: ""
 
-        val etName        = view.findViewById<EditText>(R.id.etCategoryName)
-        val etIcon        = view.findViewById<EditText>(R.id.etCategoryIcon)
+        val etName = view.findViewById<EditText>(R.id.etCategoryName)
+        val etIcon = view.findViewById<EditText>(R.id.etCategoryIcon)
         val etDescription = view.findViewById<EditText>(R.id.etCategoryDescription)
-        val btnCancel     = view.findViewById<Button>(R.id.btnCategoryCancel)
-        val btnAdd        = view.findViewById<Button>(R.id.btnCategoryAdd)
+
+        val etMinGoal = view.findViewById<EditText>(R.id.etGoalMinAmount)
+        val etMaxGoal = view.findViewById<EditText>(R.id.etGoalMaxAmount)
+
+        val btnCancel = view.findViewById<Button>(R.id.btnCategoryCancel)
+        val btnAdd = view.findViewById<Button>(R.id.btnCategoryAdd)
 
         btnCancel.setOnClickListener {
             parentFragmentManager.popBackStack()
@@ -39,8 +48,8 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
                 return@setOnClickListener
             }
 
-            val name        = etName.text.toString().trim()
-            val icon        = etIcon.text.toString().trim()
+            val name = etName.text.toString().trim()
+            val icon = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
 
             var hasError = false
@@ -66,34 +75,48 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
             if (hasError) return@setOnClickListener
 
             val category = Category(
-                userEmail           = email,
-                categoryName        = name,
-                categoryIcon        = icon,
+                userEmail = email,
+                categoryName = name,
+                categoryIcon = icon,
                 categoryDescription = description
             )
 
-            repository.insertCategory(uid, category) { success ->
+            repository.insertCategory(uid, category) { success, firebaseId ->
                 requireActivity().runOnUiThread {
-                    if (success) {
-                        // Option A — goals are set separately
-                        // Goal fields are still visible in the XML layout
-                        // but are not saved here because CategoryGoal
-                        // is owned by a teammate and still uses Room.
-                        // Once they migrate, they will wire goal saving
-                        // back into this screen using firebaseId.
-                        Toast.makeText(
-                            requireContext(),
-                            "Category added! Set goals from the Goals screen.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        parentFragmentManager.popBackStack()
-                    } else {
-                        Toast.makeText(
-                            requireContext(),
-                            "Failed to add category",
-                            Toast.LENGTH_SHORT
-                        ).show()
+
+                    if (!success || firebaseId == null) {
+                        Toast.makeText(requireContext(), "Failed to add category", Toast.LENGTH_SHORT).show()
+                        return@runOnUiThread
                     }
+
+                    // -----------------------------
+                    // SAVE GOAL IF USER ENTERED ONE
+                    // -----------------------------
+                    val minGoal = etMinGoal.text.toString().trim().toDoubleOrNull()
+                    val maxGoal = etMaxGoal.text.toString().trim().toDoubleOrNull()
+
+                    if (minGoal != null || maxGoal != null) {
+                        val goalRepo = FirebaseCategoryGoalRepository(uid)
+                        val goalId = goalRepo.generateGoalId()
+
+                        val cal = Calendar.getInstance()
+
+                        val goal = CategoryGoal(
+                            goalId = goalId,
+                            categoryId = firebaseId,   // REAL ID FROM FIREBASE
+                            minGoal = minGoal,
+                            maxGoal = maxGoal,
+                            month = cal.get(Calendar.MONTH) + 1,
+                            year = cal.get(Calendar.YEAR)
+                        )
+
+                        lifecycleScope.launch {
+                            goalRepo.insertGoal(goal)
+                        }
+                    }
+
+                    Toast.makeText(requireContext(), "Category added!", Toast.LENGTH_LONG).show()
+                    parentFragmentManager.popBackStack()
                 }
             }
         }

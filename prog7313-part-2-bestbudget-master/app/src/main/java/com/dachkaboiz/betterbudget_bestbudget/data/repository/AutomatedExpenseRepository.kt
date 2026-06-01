@@ -5,22 +5,21 @@ import com.google.firebase.database.FirebaseDatabase
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-private lateinit var repository: ExpenseRepository
-private lateinit var automatedRepo: AutomatedExpenseRepository
-private val firebaseCategoryRepository = FirebaseCategoryRepository()
-
-
-class AutomatedExpenseRepository (private val uid: String) {
+class AutomatedExpenseRepository(private val uid: String) {
 
     private val ref = FirebaseDatabase.getInstance().reference
         .child("users").child(uid).child("automatedExpenses")
+
+    fun generateId(): String = ref.push().key!!
 
     fun insertAutomatedExpense(
         expense: AutomatedExpense,
         callback: (Boolean) -> Unit
     ) {
-        val key = ref.push().key ?: return callback(false)
-        ref.child(key).setValue(expense.copy(firebaseId = key))
+        val key = generateId()
+        val finalExpense = expense.copy(firebaseId = key)
+
+        ref.child(key).setValue(finalExpense)
             .addOnSuccessListener { callback(true) }
             .addOnFailureListener { callback(false) }
     }
@@ -42,17 +41,4 @@ class AutomatedExpenseRepository (private val uid: String) {
             .addOnSuccessListener { cont.resume(Unit) }
             .addOnFailureListener { cont.resume(Unit) }
     }
-
-    suspend fun delete(firebaseId: String) = suspendCoroutine<Unit> { cont ->
-        ref.child(firebaseId).removeValue()
-            .addOnSuccessListener { cont.resume(Unit) }
-            .addOnFailureListener { cont.resume(Unit) }
-    }
-
-    suspend fun toggleActive(expense: AutomatedExpense) = suspendCoroutine<Unit> { cont ->
-        ref.child(expense.firebaseId).child("active").setValue(!expense.active)
-            .addOnSuccessListener { cont.resume(Unit) }
-            .addOnFailureListener { cont.resume(Unit) }
-    }
-
 }
