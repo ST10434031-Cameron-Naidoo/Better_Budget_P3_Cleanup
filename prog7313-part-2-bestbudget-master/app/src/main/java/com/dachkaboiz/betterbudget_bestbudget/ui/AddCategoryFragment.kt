@@ -32,12 +32,12 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
         val etIcon        = view.findViewById<EditText>(R.id.etCategoryIcon)
         val etDescription = view.findViewById<EditText>(R.id.etCategoryDescription)
 
-        // These goal fields may not be present in fragment_add_category.xml.
-        // Using findViewById with the nullable overload so the app does not
-        // crash if the IDs are absent from the layout — goal saving simply
-        // skips in that case.
-        val etMinGoal = view.findViewById<EditText?>(R.id.etGoalMinAmount)
-        val etMaxGoal = view.findViewById<EditText?>(R.id.etGoalMaxAmount)
+        // Correct IDs matching fragment_add_category.xml
+        // Previous code used etGoalMinAmount / etGoalMaxAmount which
+        // do not exist in this layout — findViewById returned null,
+        // causing the crash and silently skipping goal saves
+        val etMinGoal = view.findViewById<EditText>(R.id.etCategoryMinGoal)
+        val etMaxGoal = view.findViewById<EditText>(R.id.etCategoryMaxGoal)
 
         val btnCancel = view.findViewById<Button>(R.id.btnCategoryCancel)
         val btnAdd    = view.findViewById<Button>(R.id.btnCategoryAdd)
@@ -56,12 +56,11 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
             val icon        = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
 
-            // Capture goal values NOW before any async call.
-            // Safe even if the fields are null (not in layout) —
-            // toDoubleOrNull() on null?.toString() produces null,
-            // which skips goal creation cleanly.
-            val minGoal = etMinGoal?.text?.toString()?.trim()?.toDoubleOrNull()
-            val maxGoal = etMaxGoal?.text?.toString()?.trim()?.toDoubleOrNull()
+            // Capture goal values synchronously here, before the async
+            // Firebase call below. This is safe because the view is
+            // guaranteed alive at this point in onClick.
+            val minGoal = etMinGoal.text.toString().trim().toDoubleOrNull()
+            val maxGoal = etMaxGoal.text.toString().trim().toDoubleOrNull()
 
             var hasError = false
 
@@ -95,15 +94,11 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
             repository.insertCategory(uid, category) { success, firebaseId ->
 
                 // Guard: fragment may have detached by the time this
-                // Firebase callback fires. Without this, requireActivity()
-                // and requireContext() below will throw IllegalStateException.
+                // Firebase callback fires
                 if (!isAdded) return@insertCategory
 
                 requireActivity().runOnUiThread {
 
-                    // Second guard inside runOnUiThread — posting to the
-                    // main thread is another async hop where detachment
-                    // can happen between the post and the execution.
                     if (!isAdded) return@runOnUiThread
 
                     if (!success || firebaseId == null) {
@@ -115,8 +110,9 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
                         return@runOnUiThread
                     }
 
-                    // Save goal only if the user entered values and the
-                    // fields actually exist in this layout
+                    // Save goal if the user entered at least one value.
+                    // minGoal / maxGoal were captured before the async
+                    // call so they are safe to read here.
                     if (minGoal != null || maxGoal != null) {
                         val goalRepo = FirebaseCategoryGoalRepository(uid)
                         val goalId   = goalRepo.generateGoalId()
