@@ -29,10 +29,8 @@ class AutomationWorker (
         val expenseRepo   = ExpenseRepository(uid)
 
         return try {
-            // 1. Fetch all automation schedules
-            val allAutomated = suspendCoroutine<List<AutomatedExpense>> { cont ->
-                automatedRepo.getAll { cont.resume(it) }
-            }
+            // 1. Fetch all automation schedules directly (No suspendCoroutine needed)
+            val allAutomated = automatedRepo.getAll()
 
             // 2. Find ones that are due (nextRunDate is in the past)
             val due = AutomationScheduler.getDueExpenses(allAutomated)
@@ -66,9 +64,9 @@ class AutomationWorker (
                     lastRunDate = auto.nextRunDate,
                     nextRunDate = nextDate
                 )
-                suspendCoroutine<Unit> { cont ->
-                    automatedRepo.update(updated) { cont.resume(Unit) }
-                }
+
+                // Update directly via suspend function
+                automatedRepo.update(updated)
             }
 
             Result.success()
