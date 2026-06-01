@@ -1,17 +1,13 @@
-package com.dachkaboiz.betterbudget_bestbudget.ui
+package com.dachkaboiz.betterbudget_bestbudget.Worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.dachkaboiz.betterbudget_bestbudget.data.model.AutomatedExpense
 import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.AutomatedExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.AutomationScheduler
 import com.google.firebase.auth.FirebaseAuth
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
-
 
 class AutomationWorker (
     context: Context,
@@ -39,17 +35,17 @@ class AutomationWorker (
                 // 3. Insert the new expense
                 val newExpenseId = expenseRepo.generateExpenseId()
                 val expense = Expense(
-                    expenseID            = newExpenseId,
-                    userEmail            = userEmail,
-                    categoryId           = auto.categoryFirebaseId,
-                    subCategoryId        = null,
-                    expenseAmount        = auto.amount,
-                    expenseDate          = auto.nextRunDate,
-                    expenseDescription   = auto.description,
-                    imageUri             = auto.imageUri,
-                    imageName            = null,
-                    imageDescription     = null,
-                    automationFrequency  = null,
+                    expenseID = newExpenseId,
+                    userEmail = userEmail,
+                    categoryId = auto.categoryFirebaseId,
+                    subCategoryId = null,
+                    expenseAmount = auto.amount,
+                    expenseDate = auto.nextRunDate,
+                    expenseDescription = auto.description,
+                    imageUri = auto.imageUri,
+                    imageName = null,
+                    imageDescription = null,
+                    automationFrequency = null,
                     automationMultiplier = null
                 )
                 expenseRepo.insertExpense(expense)
