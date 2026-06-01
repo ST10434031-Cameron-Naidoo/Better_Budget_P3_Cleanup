@@ -3,9 +3,7 @@ package com.dachkaboiz.betterbudget_bestbudget.data.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "users")
 data class User(
-    @PrimaryKey
     val email: String,
     val password: String,
     //fullName replaced with firstName and surname for error prevention purposes
