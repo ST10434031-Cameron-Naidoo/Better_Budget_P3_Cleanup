@@ -21,7 +21,7 @@ class AddSubCategoryFragment(private val parentFirebaseId: String)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         val tvCatName     = view.findViewById<TextView>(R.id.tvParentCategory)
         val etName        = view.findViewById<EditText>(R.id.etSubcategoryName)
@@ -32,12 +32,10 @@ class AddSubCategoryFragment(private val parentFirebaseId: String)
         val btnAdd        = view.findViewById<Button>(R.id.btnSubAdd)
         val btnCancel     = view.findViewById<Button>(R.id.btnSubCancel)
 
-        // Load parent category name from Firebase
-        if (uid != null) {
-            firebaseCategoryRepository.getCategoryById(uid, parentFirebaseId) { cat ->
-                requireActivity().runOnUiThread {
-                    tvCatName.text = cat?.categoryName ?: ""
-                }
+        // Load parent category name
+        firebaseCategoryRepository.getCategoryById(uid, parentFirebaseId) { cat ->
+            requireActivity().runOnUiThread {
+                tvCatName.text = cat?.categoryName ?: ""
             }
         }
 
@@ -48,68 +46,88 @@ class AddSubCategoryFragment(private val parentFirebaseId: String)
             val minGoal     = etMinGoal.text.toString().toDoubleOrNull()
             val maxGoal     = etMaxGoal.text.toString().toDoubleOrNull()
 
-            if (name.isEmpty()) {
-                etName.error = "Name is required"
-                return@setOnClickListener
-            }
-            if (icon.isBlank()) {
-                etIcon.error = "Icon is required"
-                return@setOnClickListener
-            }
+            if (name.isEmpty()) { etName.error = "Name is required"; return@setOnClickListener }
+            if (icon.isBlank()) { etIcon.error = "Icon is required"; return@setOnClickListener }
 
-            val uidNow = FirebaseAuth.getInstance().currentUser?.uid ?: return@setOnClickListener
-            val calendar = Calendar.getInstance()
-            val month = calendar.get(Calendar.MONTH) + 1
-            val year = calendar.get(Calendar.YEAR)
+            // Validate min/max
+            if (minGoal != null && maxGoal != null && minGoal > maxGoal) {
+                Toast.makeText(requireContext(), "Min goal cannot exceed max goal", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
             val userRef = FirebaseDatabase.getInstance().reference
                 .child("users")
-                .child(uidNow)
+                .child(uid)
 
-            // 1️⃣ Read category goal
+            val calendar = Calendar.getInstance()
+            val month = calendar.get(Calendar.MONTH) + 1
+            val year = calendar.get(Calendar.YEAR)
+            val monthKey = "$year-$month"
+
+            // 1️⃣ Load category goal
             userRef.child("categoryGoals")
                 .child(parentFirebaseId)
-                .child("$year-$month")
+                .child(monthKey)
                 .get()
                 .addOnSuccessListener { catGoalSnap ->
 
                     val catMinGoal = catGoalSnap.child("minGoal").getValue(Double::class.java) ?: 0.0
                     val catMaxGoal = catGoalSnap.child("maxGoal").getValue(Double::class.java) ?: 0.0
 
-                    // 2️⃣ Read all subcategory goals for this category
+                    // 2️⃣ Load existing subcategory goals
                     userRef.child("subCategoryGoals")
                         .child(parentFirebaseId)
-                        .child("$year-$month")
+                        .child(monthKey)
                         .get()
                         .addOnSuccessListener { subGoalsSnap ->
 
-                            var totalMinSubGoal = 0.0
-                            var totalMaxSubGoal = 0.0
+                            var totalMin = 0.0
+                            var totalMax = 0.0
 
                             for (child in subGoalsSnap.children) {
-                                totalMinSubGoal += child.child("minGoal").getValue(Double::class.java) ?: 0.0
-                                totalMaxSubGoal += child.child("maxGoal").getValue(Double::class.java) ?: 0.0
+                                totalMin += child.child("minGoal").getValue(Double::class.java) ?: 0.0
+                                totalMax += child.child("maxGoal").getValue(Double::class.java) ?: 0.0
                             }
 
-                            val safeMinGoal = minGoal ?: 0.0
-                            val safeMaxGoal = maxGoal ?: 0.0
+                            val safeMin = minGoal ?: 0.0
+                            val safeMax = maxGoal ?: 0.0
 
-//                            val goalsValid =
-//                                (catMinGoal >= totalMinSubGoal + safeMinGoal) &&
-//                                        (catMaxGoal >= totalMaxSubGoal + safeMaxGoal)
-//
-//                            if (!goalsValid) {
-//                                Toast.makeText(
-//                                    requireContext(),
-//                                    "Min or max goal total is greater than category min or max goal",
-//                                    Toast.LENGTH_SHORT
-//                                ).show()
-//                                return@addOnSuccessListener
-//                            }
+                            val categoryHasGoal = (catMinGoal > 0 || catMaxGoal > 0)
+
+                            if (categoryHasGoal) {
+
+                                val exceedsMin = catMinGoal < (totalMin + safeMin)
+                                val exceedsMax = catMaxGoal < (totalMax + safeMax)
+
+                                if (exceedsMin && exceedsMax) {
+                                    Toast.makeText(requireContext(),
+                                        "Both min and max goals exceed the category limits",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@addOnSuccessListener
+                                }
+
+                                if (exceedsMin) {
+                                    Toast.makeText(requireContext(),
+                                        "Min goal exceeds the category's remaining min goal",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@addOnSuccessListener
+                                }
+
+                                if (exceedsMax) {
+                                    Toast.makeText(requireContext(),
+                                        "Max goal exceeds the category's remaining max goal",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@addOnSuccessListener
+                                }
+                            }
+
+
 
                             // 3️⃣ Create subcategory
                             val subCatId = userRef.child("subcategories").push().key!!
-
                             val newSubCategory = mapOf(
                                 "parentFirebaseId" to parentFirebaseId,
                                 "subCategoryName" to name,
@@ -121,7 +139,7 @@ class AddSubCategoryFragment(private val parentFirebaseId: String)
                                 .setValue(newSubCategory)
                                 .addOnSuccessListener {
 
-                                    // 4️⃣ Add subcategory goal
+                                    // 4️⃣ Create subcategory goal (if provided)
                                     if (minGoal != null || maxGoal != null) {
                                         val goal = mapOf(
                                             "subCategoryID" to subCatId,
@@ -134,25 +152,19 @@ class AddSubCategoryFragment(private val parentFirebaseId: String)
 
                                         userRef.child("subCategoryGoals")
                                             .child(parentFirebaseId)
-                                            .child("$year-$month")
+                                            .child(monthKey)
                                             .child(subCatId)
                                             .setValue(goal)
                                     }
 
-                                    Toast.makeText(
-                                        requireContext(),
-                                        "Subcategory added successfully",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
+                                    Toast.makeText(requireContext(), "Subcategory added!", Toast.LENGTH_SHORT).show()
                                     parentFragmentManager.popBackStack()
                                 }
                         }
                 }
         }
 
-        btnCancel.setOnClickListener {
-            parentFragmentManager.popBackStack()
-        }
+        btnCancel.setOnClickListener { parentFragmentManager.popBackStack() }
     }
 }
+

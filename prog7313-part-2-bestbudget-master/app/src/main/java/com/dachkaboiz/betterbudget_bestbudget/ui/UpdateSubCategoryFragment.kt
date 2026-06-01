@@ -7,15 +7,9 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import com.dachkaboiz.betterbudget_bestbudget.R
-import com.dachkaboiz.betterbudget_bestbudget.data.database.AppDatabase
-import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategory
-import com.dachkaboiz.betterbudget_bestbudget.data.model.SubCategoryGoal
-import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class UpdateSubCategoryFragment(
@@ -59,7 +53,7 @@ class UpdateSubCategoryFragment(
                 etDescription.setText(snap.child("subCategoryDescription").value?.toString() ?: "")
             }
 
-        // 3️⃣ Load subcategory goal
+        // 3️⃣ Load existing subcategory goal (if any)
         userRef.child("subCategoryGoals")
             .child(parentFirebaseId)
             .child(monthKey)
@@ -81,15 +75,19 @@ class UpdateSubCategoryFragment(
             if (name.isEmpty()) { etName.error = "Name is required"; return@setOnClickListener }
             if (icon.isBlank()) { etIcon.error = "Icon is required"; return@setOnClickListener }
 
-            // 5️⃣ Validate goals
-            userRef.child("categoryGoals").child(parentFirebaseId).child(monthKey)
+            // 5️⃣ Validate against category goal
+            userRef.child("categoryGoals")
+                .child(parentFirebaseId)
+                .child(monthKey)
                 .get()
                 .addOnSuccessListener { catGoalSnap ->
 
                     val catMinGoal = catGoalSnap.child("minGoal").getValue(Double::class.java) ?: 0.0
                     val catMaxGoal = catGoalSnap.child("maxGoal").getValue(Double::class.java) ?: 0.0
 
-                    userRef.child("subCategoryGoals").child(parentFirebaseId).child(monthKey)
+                    userRef.child("subCategoryGoals")
+                        .child(parentFirebaseId)
+                        .child(monthKey)
                         .get()
                         .addOnSuccessListener { subGoalsSnap ->
 
@@ -106,14 +104,12 @@ class UpdateSubCategoryFragment(
                             val safeMin = minGoal ?: 0.0
                             val safeMax = maxGoal ?: 0.0
 
-//                            val valid =
-//                                (catMinGoal >= totalMin + safeMin) &&
-//                                        (catMaxGoal >= totalMax + safeMax)
-//
-//                            if (!valid) {
-//                                Toast.makeText(requireContext(), "Goal exceeds category limit", Toast.LENGTH_SHORT).show()
-//                                return@addOnSuccessListener
-//                            }
+                            // Optional validation
+                            if ((catMinGoal < totalMin + safeMin) ||
+                                (catMaxGoal < totalMax + safeMax)) {
+                                Toast.makeText(requireContext(), "Goal exceeds category limit", Toast.LENGTH_SHORT).show()
+                                return@addOnSuccessListener
+                            }
 
                             // 6️⃣ Update subcategory
                             val updatedSub = mapOf(
@@ -125,7 +121,7 @@ class UpdateSubCategoryFragment(
                             userRef.child("subcategories").child(subFirebaseId)
                                 .updateChildren(updatedSub)
 
-                            // 7️⃣ Update goal
+                            // 7️⃣ Add or Update subcategory goal
                             val updatedGoal = mapOf(
                                 "minGoal" to minGoal,
                                 "maxGoal" to maxGoal,

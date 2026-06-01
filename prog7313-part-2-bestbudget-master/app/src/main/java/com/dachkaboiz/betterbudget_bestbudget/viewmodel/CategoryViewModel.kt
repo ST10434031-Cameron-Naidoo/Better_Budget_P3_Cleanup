@@ -17,12 +17,22 @@ class CategoryViewModel : ViewModel() {
     val category: StateFlow<Category?> = _category
 
     fun loadCategories(uid: String) {
+        // Clear first so StateFlow always emits even when the new list
+        // contains the same items as the previous one. Without this,
+        // StateFlow compares the old and new list by reference — if
+        // Firebase returns a new List object with identical contents,
+        // the value appears unchanged and the collector never fires,
+        // so the adapter never redraws after a delete or update.
+        _categories.value = emptyList()
+
         repository.getCategories(uid) { list ->
             _categories.value = list
         }
     }
 
     fun loadCategory(uid: String, firebaseId: String) {
+        _category.value = null
+
         repository.getCategoryById(uid, firebaseId) { cat ->
             _category.value = cat
         }
