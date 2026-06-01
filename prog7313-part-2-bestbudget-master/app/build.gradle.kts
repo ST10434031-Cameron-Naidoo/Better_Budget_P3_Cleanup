@@ -63,7 +63,7 @@ dependencies {
     implementation("com.google.firebase:firebase-storage:21.0.1")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     ksp("com.github.bumptech.glide:compiler:4.16.0")
-
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
 
     // Room
@@ -82,4 +82,6 @@ dependencies {
     // Emoji
     implementation("androidx.emoji2:emoji2-emojipicker:1.5.0")
     implementation("androidx.emoji2:emoji2-bundled:1.5.0")
+
+
 }
