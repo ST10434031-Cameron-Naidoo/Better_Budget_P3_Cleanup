@@ -28,15 +28,19 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
             .getSharedPreferences("auth", 0)
             .getString("email", "") ?: ""
 
-        val etName = view.findViewById<EditText>(R.id.etCategoryName)
-        val etIcon = view.findViewById<EditText>(R.id.etCategoryIcon)
+        val etName        = view.findViewById<EditText>(R.id.etCategoryName)
+        val etIcon        = view.findViewById<EditText>(R.id.etCategoryIcon)
         val etDescription = view.findViewById<EditText>(R.id.etCategoryDescription)
 
-        val etMinGoal = view.findViewById<EditText>(R.id.etGoalMinAmount)
-        val etMaxGoal = view.findViewById<EditText>(R.id.etGoalMaxAmount)
+        // Correct IDs matching fragment_add_category.xml
+        // Previous code used etGoalMinAmount / etGoalMaxAmount which
+        // do not exist in this layout — findViewById returned null,
+        // causing the crash and silently skipping goal saves
+        val etMinGoal = view.findViewById<EditText>(R.id.etCategoryMinGoal)
+        val etMaxGoal = view.findViewById<EditText>(R.id.etCategoryMaxGoal)
 
         val btnCancel = view.findViewById<Button>(R.id.btnCategoryCancel)
-        val btnAdd = view.findViewById<Button>(R.id.btnCategoryAdd)
+        val btnAdd    = view.findViewById<Button>(R.id.btnCategoryAdd)
 
         btnCancel.setOnClickListener {
             parentFragmentManager.popBackStack()
@@ -48,9 +52,15 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
                 return@setOnClickListener
             }
 
-            val name = etName.text.toString().trim()
-            val icon = etIcon.text.toString().trim()
+            val name        = etName.text.toString().trim()
+            val icon        = etIcon.text.toString().trim()
             val description = etDescription.text.toString().trim()
+
+            // Capture goal values synchronously here, before the async
+            // Firebase call below. This is safe because the view is
+            // guaranteed alive at this point in onClick.
+            val minGoal = etMinGoal.text.toString().trim().toDoubleOrNull()
+            val maxGoal = etMaxGoal.text.toString().trim().toDoubleOrNull()
 
             var hasError = false
 
@@ -75,39 +85,46 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
             if (hasError) return@setOnClickListener
 
             val category = Category(
-                userEmail = email,
-                categoryName = name,
-                categoryIcon = icon,
+                userEmail           = email,
+                categoryName        = name,
+                categoryIcon        = icon,
                 categoryDescription = description
             )
 
             repository.insertCategory(uid, category) { success, firebaseId ->
+
+                // Guard: fragment may have detached by the time this
+                // Firebase callback fires
+                if (!isAdded) return@insertCategory
+
                 requireActivity().runOnUiThread {
 
+                    if (!isAdded) return@runOnUiThread
+
                     if (!success || firebaseId == null) {
-                        Toast.makeText(requireContext(), "Failed to add category", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Failed to add category",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@runOnUiThread
                     }
 
-                    // -----------------------------
-                    // SAVE GOAL IF USER ENTERED ONE
-                    // -----------------------------
-                    val minGoal = etMinGoal.text.toString().trim().toDoubleOrNull()
-                    val maxGoal = etMaxGoal.text.toString().trim().toDoubleOrNull()
-
+                    // Save goal if the user entered at least one value.
+                    // minGoal / maxGoal were captured before the async
+                    // call so they are safe to read here.
                     if (minGoal != null || maxGoal != null) {
                         val goalRepo = FirebaseCategoryGoalRepository(uid)
-                        val goalId = goalRepo.generateGoalId()
-
-                        val cal = Calendar.getInstance()
+                        val goalId   = goalRepo.generateGoalId()
+                        val cal      = Calendar.getInstance()
 
                         val goal = CategoryGoal(
-                            goalId = goalId,
-                            categoryId = firebaseId,   // REAL ID FROM FIREBASE
-                            minGoal = minGoal,
-                            maxGoal = maxGoal,
-                            month = cal.get(Calendar.MONTH) + 1,
-                            year = cal.get(Calendar.YEAR)
+                            goalId     = goalId,
+                            categoryId = firebaseId,
+                            minGoal    = minGoal,
+                            maxGoal    = maxGoal,
+                            month      = cal.get(Calendar.MONTH) + 1,
+                            year       = cal.get(Calendar.YEAR)
                         )
 
                         lifecycleScope.launch {
@@ -115,7 +132,11 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
                         }
                     }
 
-                    Toast.makeText(requireContext(), "Category added!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Category added!",
+                        Toast.LENGTH_LONG
+                    ).show()
                     parentFragmentManager.popBackStack()
                 }
             }
@@ -127,7 +148,7 @@ class AddCategoryFragment : Fragment(R.layout.fragment_add_category) {
         var i = 0
         while (i < text.length) {
             val codePoint = text.codePointAt(i)
-            val type = Character.getType(codePoint)
+            val type      = Character.getType(codePoint)
             if (type != Character.SURROGATE.toInt() &&
                 type != Character.OTHER_SYMBOL.toInt() &&
                 type != Character.NON_SPACING_MARK.toInt() &&

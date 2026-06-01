@@ -16,6 +16,7 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.CategoryGoal
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryGoalRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseSnoozeRepository
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -36,6 +37,7 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
     private lateinit var goalRepo: FirebaseCategoryGoalRepository
     private lateinit var categoryRepo: FirebaseCategoryRepository
     private lateinit var expenseRepo: ExpenseRepository
+    private lateinit var snoozeRepo: FirebaseSnoozeRepository
 
     private var categoryCache: List<Category> = emptyList()
     private var goalCache: List<CategoryGoal> = emptyList()
@@ -44,9 +46,10 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
         super.onViewCreated(view, savedInstanceState)
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        goalRepo = FirebaseCategoryGoalRepository(uid)
+        goalRepo     = FirebaseCategoryGoalRepository(uid)
         categoryRepo = FirebaseCategoryRepository()
-        expenseRepo = ExpenseRepository(uid)
+        expenseRepo  = ExpenseRepository(uid)
+        snoozeRepo   = FirebaseSnoozeRepository(uid)
 
         rvGoals    = view.findViewById(R.id.rvGoalsList)
         tvNoGoals  = view.findViewById(R.id.tvNoGoals)
@@ -111,22 +114,18 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
         lifecycleScope.launch {
 
-            // Load categories
             val categories = categoryRepo.getCategoriesSuspend(uid)
             categoryCache = categories
 
-            // Load goals
             val goals = goalRepo.getAllGoals()
             goalCache = goals
 
-            // Build display list
             val displayList = mutableListOf<Triple<CategoryGoal, Category?, Double>>()
 
             for (goal in goals) {
 
                 val category = categoryCache.find { it.firebaseId == goal.categoryId }
 
-                // Filter by month/year range
                 val goalCal = Calendar.getInstance().apply {
                     set(goal.year, goal.month - 1, 1)
                 }
@@ -136,14 +135,34 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
                 if (!fromOk || !toOk) continue
 
-                // Load expenses for this category
-                val expenses = expenseRepo.getExpensesByCategory(goal.categoryId)
-                val totalSpent = expenses.sumOf { it.expenseAmount }
+                // Get all expenses for this category
+                val allExpenses = expenseRepo.getExpensesByCategory(goal.categoryId)
+
+                // Filter to only this goal's month and year
+                // Calendar.MONTH is 0-based so we add 1 to match goal.month
+                val monthExpenses = allExpenses.filter {
+                    val expCal = Calendar.getInstance().apply {
+                        timeInMillis = it.expenseDate
+                    }
+                    val expMonth = expCal.get(Calendar.MONTH) + 1
+                    val expYear  = expCal.get(Calendar.YEAR)
+                    expMonth == goal.month && expYear == goal.year
+                }
+
+                // Get snoozed expense IDs for this category and month
+                // These are excluded from the progress bar total
+                val snoozedIds = snoozeRepo.getSnoozedExpenseIds(
+                    goal.categoryId, goal.month, goal.year
+                )
+
+                // Only sum expenses that are NOT snoozed
+                val totalSpent = monthExpenses
+                    .filter { it.expenseID !in snoozedIds }
+                    .sumOf { it.expenseAmount }
 
                 displayList.add(Triple(goal, category, totalSpent))
             }
 
-            // Sorting
             val sorted = when (rgSort.checkedRadioButtonId) {
                 R.id.rbSortLastAdded  -> displayList.sortedByDescending { it.first.goalId }
                 R.id.rbSortFirstAdded -> displayList.sortedBy { it.first.goalId }
@@ -152,10 +171,10 @@ class GoalHomeFragment : Fragment(R.layout.fragment_goals) {
 
             if (sorted.isEmpty()) {
                 tvNoGoals.visibility = View.VISIBLE
-                rvGoals.visibility = View.GONE
+                rvGoals.visibility   = View.GONE
             } else {
                 tvNoGoals.visibility = View.GONE
-                rvGoals.visibility = View.VISIBLE
+                rvGoals.visibility   = View.VISIBLE
                 adapter.updateData(sorted)
             }
         }
