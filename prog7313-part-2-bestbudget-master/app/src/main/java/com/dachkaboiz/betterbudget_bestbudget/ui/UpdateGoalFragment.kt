@@ -47,7 +47,7 @@ class UpdateGoalFragment : Fragment(R.layout.fragment_update_goal) {
                 val categoryName = categoryCache.find { it.firebaseId == goal.categoryId }?.categoryName
                     ?: "Category"
 
-                tvCategory.text = categoryName
+                //tvCategory.text = categoryName
                 etMin.setText(goal.minGoal?.toString() ?: "")
                 etMax.setText(goal.maxGoal?.toString() ?: "")
             }
