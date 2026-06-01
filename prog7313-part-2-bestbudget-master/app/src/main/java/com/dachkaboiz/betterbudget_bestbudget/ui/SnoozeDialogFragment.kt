@@ -4,10 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
-import com.google.android.material.button.MaterialButton
 import com.dachkaboiz.betterbudget_bestbudget.R
 
 /**
@@ -15,7 +16,7 @@ import com.dachkaboiz.betterbudget_bestbudget.R
  *
  * Shown when a new expense would push a category over its monthly budget limit.
  *
- * Layout: dialog_snooze.xml
+ * Layout: dialog_snooze_v2.xml
  * IDs used:
  *   tvSnoozeMessage      — main message text
  *   tvSnoozeCount        — snoozes remaining label
@@ -78,7 +79,7 @@ class SnoozeDialogFragment : DialogFragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View = inflater.inflate(R.layout.dialog_snooze, container, false)
+    ): View = inflater.inflate(R.layout.dialog_snooze_v2, container, false)
 
     // -----------------------------------------------------------------------
     // Bind views and set content
@@ -94,11 +95,11 @@ class SnoozeDialogFragment : DialogFragment() {
         val newAmount    = arguments?.getDouble(ARG_NEW_AMOUNT)     ?: 0.0
         val snoozesLeft  = arguments?.getInt(ARG_SNOOZES_LEFT)     ?: 0
 
-        val tvMessage    = view.findViewById<TextView>(R.id.tvSnoozeMessage)
-        val tvCount      = view.findViewById<TextView>(R.id.tvSnoozeCount)
-        val btnUseSnooze = view.findViewById<MaterialButton>(R.id.btnUseSnooze)
-        val btnLogWithout = view.findViewById<MaterialButton>(R.id.btnLogWithoutSnooze)
-        val btnClose     = view.findViewById<MaterialButton>(R.id.btnCloseSnooze)
+        val tvMessage     = view.findViewById<TextView>(R.id.tvSnoozeMessage)
+        val tvCount       = view.findViewById<TextView>(R.id.tvSnoozeCount)
+        val btnUseSnooze  = view.findViewById<Button>(R.id.btnUseSnooze)
+        val btnLogWithout = view.findViewById<Button>(R.id.btnLogWithoutSnooze)
+        val btnClose      = view.findViewById<ImageView>(R.id.btnCloseSnooze)
 
         // Build the warning message
         val projectedTotal = currentTotal + newAmount
@@ -156,8 +157,6 @@ class SnoozeDialogFragment : DialogFragment() {
      * Sends the result back to the parent fragment via the Fragment Result API.
      * AddExpenseFragment listens for "snooze_result" and acts accordingly.
      */
-
-
     private fun sendResult(action: String) {
         parentFragmentManager.setFragmentResult(
             "snooze_result",
