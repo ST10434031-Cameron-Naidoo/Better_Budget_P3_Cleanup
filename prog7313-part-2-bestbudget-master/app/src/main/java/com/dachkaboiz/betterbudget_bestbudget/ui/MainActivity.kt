@@ -20,6 +20,10 @@ class MainActivity : AppCompatActivity() {
     var email: String? = null
     private lateinit var tvScreenTitle: TextView
 
+    // ── Production: runs once per day ────────────────────────────────────────
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -86,5 +90,25 @@ class MainActivity : AppCompatActivity() {
                 .commit()
             tvScreenTitle.text = "PROFILE"
         }
+
+        val dailyRequest = PeriodicWorkRequestBuilder<AutomationWorker>(1, TimeUnit.DAYS)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "automation_daily",
+            ExistingPeriodicWorkPolicy.KEEP,
+            dailyRequest
+        )
+
+// ── Testing only: runs immediately when app opens ─────────────────────────
+// Remove this block before releasing to production
+        val testRequest = OneTimeWorkRequestBuilder<AutomationWorker>().build()
+        WorkManager.getInstance(this).enqueue(testRequest)
     }
 }
