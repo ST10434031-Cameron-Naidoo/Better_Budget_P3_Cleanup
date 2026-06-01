@@ -11,7 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.dachkaboiz.betterbudget_bestbudget.R
 import androidx.work.*
-import com.dachkaboiz.betterbudget_bestbudget.workers.AutomationWorker
+import com.dachkaboiz.betterbudget_bestbudget.ui.AutomationWorker
 import java.util.concurrent.TimeUnit
 
 
