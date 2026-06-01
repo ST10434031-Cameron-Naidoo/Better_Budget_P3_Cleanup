@@ -346,6 +346,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                         )
 
                         val automated = AutomatedExpense(
+                            firebaseId = "",
                             categoryFirebaseId = selectedCategoryFirebaseId,
                             amount = expense.expenseAmount,
                             description = expense.expenseDescription,
@@ -353,6 +354,8 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                             frequencyUnit = selectedFrequencyUnit!!,
                             frequencyMultiplier = selectedMultiplier,
                             nextRunDate = nextRun,
+                            lastRunDate = null,
+                            active = true,
                             userEmail = currentUserEmail
                         )
 

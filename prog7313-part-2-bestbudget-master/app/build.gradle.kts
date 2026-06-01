@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.emoji2.bundled)
     implementation(libs.androidx.emoji2.emojipicker)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
