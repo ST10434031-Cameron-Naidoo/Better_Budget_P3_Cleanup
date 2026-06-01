@@ -27,6 +27,9 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
     private lateinit var viewModel: CategoryViewModel
     private lateinit var adapter: CategoryAdapter<Triple<Category, CategoryGoal?, List<Expense>>>
 
+    // Hold references so onResume can trigger a rebuild without
+    // re-running the full onViewCreated setup
+    private var rgSortOrder: RadioGroup? = null
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
 
@@ -35,11 +38,14 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        val rgSortOrder = view.findViewById<RadioGroup>(R.id.rgFullCategorySort)
-        val dpStart     = view.findViewById<TextView>(R.id.dpFullCategoryStartDate)
-        val dpFinish    = view.findViewById<TextView>(R.id.dpFullCategoryEndDate)
-        val listView    = view.findViewById<ListView>(R.id.lvFullCategories)
-        val btnAdd      = view.findViewById<Button>(R.id.btnAddFullCategory)
+        val rgSort  = view.findViewById<RadioGroup>(R.id.rgFullCategorySort)
+        val dpStart  = view.findViewById<TextView>(R.id.dpFullCategoryStartDate)
+        val dpFinish = view.findViewById<TextView>(R.id.dpFullCategoryEndDate)
+        val listView = view.findViewById<ListView>(R.id.lvFullCategories)
+        val btnAdd   = view.findViewById<Button>(R.id.btnAddFullCategory)
+
+        // Keep a reference so onResume can call buildAndDisplayList
+        rgSortOrder = rgSort
 
         viewModel = ViewModelProvider(this)[CategoryViewModel::class.java]
 
@@ -48,20 +54,17 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
         }
 
         adapter = CategoryAdapter(
-            context = requireActivity(),
-            items = emptyList(),
+            context          = requireActivity(),
+            items            = emptyList(),
             parentFirebaseId = "ROOT",
-            onItemClick = { triple ->
-                val cat = triple.first
-                swapToFragment(CategoryBreakdownFragment(cat.firebaseId))
+            onItemClick      = { triple ->
+                swapToFragment(CategoryBreakdownFragment(triple.first.firebaseId))
             },
-            onEditClick = { triple ->
-                val cat = triple.first
-                swapToFragment(UpdateCategoryFragment(cat.firebaseId))
+            onEditClick      = { triple ->
+                swapToFragment(UpdateCategoryFragment(triple.first.firebaseId))
             },
-            onDeleteClick = { triple ->
-                val cat = triple.first
-                swapToFragment(DeleteCategoryFragment(cat.firebaseId))
+            onDeleteClick    = { triple ->
+                swapToFragment(DeleteCategoryFragment(triple.first.firebaseId))
             }
         )
 
@@ -69,14 +72,15 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
 
         viewModel.loadCategories(uid)
 
+        // Rebuild the list every time the category data changes in the ViewModel
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.categories.collect { categoryList ->
-                buildAndDisplayList(categoryList, rgSortOrder)
+                buildAndDisplayList(categoryList, rgSort)
             }
         }
 
-        rgSortOrder.setOnCheckedChangeListener { _, _ ->
-            buildAndDisplayList(viewModel.categories.value, rgSortOrder)
+        rgSort.setOnCheckedChangeListener { _, _ ->
+            buildAndDisplayList(viewModel.categories.value, rgSort)
         }
 
         dpStart.setOnClickListener {
@@ -87,7 +91,7 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
                 }
                 dateFrom = cal.timeInMillis
                 dpStart.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
-                buildAndDisplayList(viewModel.categories.value, rgSortOrder)
+                buildAndDisplayList(viewModel.categories.value, rgSort)
             }
         }
 
@@ -99,7 +103,7 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
                 }
                 dateTo = cal.timeInMillis
                 dpFinish.text = "%02d-%02d-%04d ⌵".format(day, month + 1, year)
-                buildAndDisplayList(viewModel.categories.value, rgSortOrder)
+                buildAndDisplayList(viewModel.categories.value, rgSort)
             }
         }
     }
@@ -107,38 +111,52 @@ class CategoryFragment : Fragment(R.layout.fragment_category) {
     override fun onResume() {
         super.onResume()
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        // Re-fetch from Firebase so the list reflects any edits
+        // made in UpdateCategoryFragment or AddCategoryFragment
+        // before this screen was resumed
         viewModel.loadCategories(uid)
+
+        // Also rebuild the display immediately with whatever
+        // the ViewModel currently holds, in case loadCategories
+        // is slow and the list looks stale for a moment
+        val rg = rgSortOrder ?: return
+        buildAndDisplayList(viewModel.categories.value, rg)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Clear the reference to avoid a memory leak — the
+        // RadioGroup belongs to the view which is being destroyed
+        rgSortOrder = null
     }
 
     private fun buildAndDisplayList(
         categoryList: List<Category>,
-        rgSortOrder: RadioGroup
+        rgSort: RadioGroup
     ) {
         lifecycleScope.launch {
-
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
 
-            val goalRepo = FirebaseCategoryGoalRepository(uid)
+            val goalRepo    = FirebaseCategoryGoalRepository(uid)
             val expenseRepo = ExpenseRepository(uid)
-
-            val allGoals = goalRepo.getAllGoals()
+            val allGoals    = goalRepo.getAllGoals()
 
             val combined = categoryList.map { cat ->
-
                 val goal = allGoals.firstOrNull { it.categoryId == cat.firebaseId }
 
-                val expenses = expenseRepo.getExpensesByCategory(cat.firebaseId)
-
-                val filteredExpenses = expenses.filter { exp ->
-                    val fromOk = dateFrom?.let { exp.expenseDate >= it } ?: true
-                    val toOk   = dateTo?.let { exp.expenseDate <= it } ?: true
-                    fromOk && toOk
-                }
+                val filteredExpenses = expenseRepo
+                    .getExpensesByCategory(cat.firebaseId)
+                    .filter { exp ->
+                        val fromOk = dateFrom?.let { exp.expenseDate >= it } ?: true
+                        val toOk   = dateTo?.let { exp.expenseDate <= it } ?: true
+                        fromOk && toOk
+                    }
 
                 Triple(cat, goal, filteredExpenses)
             }
 
-            val sorted = when (rgSortOrder.checkedRadioButtonId) {
+            val sorted = when (rgSort.checkedRadioButtonId) {
                 R.id.rbFullCategoryFirstAdded -> combined.sortedBy { it.first.firebaseId }
                 R.id.rbFullCategoryLastAdded  -> combined.sortedByDescending { it.first.firebaseId }
                 else                          -> combined.sortedBy { it.first.categoryName }
