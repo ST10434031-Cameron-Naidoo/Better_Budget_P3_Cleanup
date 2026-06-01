@@ -15,6 +15,7 @@ import com.dachkaboiz.betterbudget_bestbudget.data.model.Expense
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.AutomatedExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.ExpenseRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.repository.FirebaseCategoryRepository
+import com.dachkaboiz.betterbudget_bestbudget.data.repository.SubCategoryRepository
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.AutomationScheduler
 import com.dachkaboiz.betterbudget_bestbudget.data.utils.ImageUtils
 import com.google.firebase.auth.FirebaseAuth
@@ -254,17 +255,28 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                 val amount = etAmount.text.toString().trim().toDoubleOrNull()
                 val description = etDescription.text.toString().trim()
 
-                val multiplier = etMultiplier.text.toString().trim().toIntOrNull() ?: 1
+                if (selectedFrequencyUnit != null) {
+                    selectedMultiplier = etMultiplier.text.toString().trim().toIntOrNull() ?: 0
+                    if (selectedMultiplier < 1) {
+                        etMultiplier.error = "Minimum 1"
+                        return@setOnClickListener
+
+                    }
+                }
 
                 if (day == null || month == null || year == null || amount == null || amount <= 0) {
                     Toast.makeText(requireContext(), "Please fill all fields correctly.", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
 
+
+
                 val cal = Calendar.getInstance().apply {
                     set(year, month - 1, day, 0, 0, 0)
                     set(Calendar.MILLISECOND, 0)
                 }
+
+
 
                 val id = editingExpenseId ?: repository.generateExpenseId()
 
@@ -279,8 +291,8 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
                     imageUri = currentImageUri?.toString(),
                     imageName = null,
                     imageDescription = null,
-                    automationFrequency = null,
-                    automationMultiplier = null
+                    automationFrequency = selectedFrequencyUnit,
+                    automationMultiplier =  if (selectedFrequencyUnit != null) selectedMultiplier else null
                 )
 
 //                lifecycleScope.launch {
@@ -353,7 +365,7 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
             }
         }
 
-
+    }
 }
 
 
@@ -367,5 +379,5 @@ class AddExpenseFragment : Fragment(R.layout.fragment_add_expense_v2) {
 //        pendingExpense = null
 //        parentFragmentManager.popBackStack()
 //    }
-}
+//}
 
